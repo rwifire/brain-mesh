@@ -1,0 +1,58 @@
+# v0 breakdown
+
+How v0 of [the spec](../spec.md) gets built. Agreed 2026-11-22. Each numbered chunk becomes one implementation plan (writing-plans), written only once its predecessors are done so it can build on real code. Every plan starts from the spec, [GLOSSARY.md](../../GLOSSARY.md) and the [ADRs](../adr/), and links back here.
+
+## Approach
+
+- **Walking skeleton.** Three milestones, each ending in something usable, instead of finishing the CLI before any skill.
+- **Dogfooding from the end of milestone A.** Ramon runs a real workspace; every bug found becomes a fixture.
+- **Upgrade designed early, built late.** Chunk 5 records which files are managed and their rendered hashes, so workspaces created in A and B can be upgraded once chunk 11 lands.
+
+## Folder layout
+
+```
+ai brain-mesh/                 # parent folder, not a repo
+├── brain-mesh/                # core repo: CLI, templates, skills, docs (this repo)
+├── <dogfood workspace>/       # created by `init` at the end of milestone A
+└── <sandbox shared brain>/    # created for milestone B
+```
+
+## Milestone A — Personal loop
+
+One workspace, one personal brain, Claude Code only.
+
+| # | Chunk | Done when |
+| --- | --- | --- |
+| 1 | **Research spike.** Current Claude Code and Copilot conventions for skills, agents and instruction files; choice of YAML, frontmatter and markdown-link libraries. | A short research note in `docs/research/` answers each question with sources, and the spec's 9.2 is updated. |
+| 2 | **Foundation.** Repo scaffold, TypeScript/ESM on Node 22, CLI framework, `--json` output contract, Vitest harness with fixture brains in temp dirs, CI on Windows and Linux, JSON Schemas for `mesh.yaml` and `brain.yaml`. | A no-op command runs via `npx` from a local build, returns valid `--json`, and CI is green on both OSes. |
+| 3 | **Brain model and `doctor` checks.** Parse notes, frontmatter and links; every offline check from spec 8. | Each check has a failing and a passing fixture; `doctor --json` reports them with stable codes. |
+| 4 | **Generators and `doctor --fix`.** MOC lists, `CODEOWNERS`, `links_to`, generated part of a brain's `AGENTS.md`; regeneration inside conflict markers. | Output is byte-identical across runs and platforms; a fixture with a conflicted generated block is repaired. |
+| 5 | **Template rendering.** Workspace and brain templates; client rendering for Claude (and Copilot); render record of managed files and hashes in `.mesh/`. | Rendering a fixture workspace twice is a no-op; the render record lists every managed file. |
+| 6 | **`init` (new) and personal writes.** Workspace repo via `gh`, personal brain, `tools/` scaffold, pre-commit mixed-commit warning, committing only `brains/personal/` paths. | `init` in an empty folder produces a pushed private repo that opens as a vault at `brains/` and passes `doctor`. |
+| 7 | **Personal skills.** capture, ingest, ask; minimal `search`. | The personal-brain scenarios of the checklist pass on Claude Code; Ramon starts dogfooding. |
+
+## Milestone B — Shared loop
+
+Personal brain plus one shared brain, PRs through GitHub.
+
+| # | Chunk | Done when |
+| --- | --- | --- |
+| 8 | **Host adapter.** gh-based get permission, validate owner, create PR, create workspace repo; `--offline` handling. | Adapter has a fake for tests and a real implementation exercised against a sandbox repo. |
+| 9 | **Mount lifecycle.** `mount`, `unmount`, `mounts`, `sync` (incl. cloning missing mounts), `brain new` (URL and local), `brain publish`, `init` restore. | Cloning the dogfood workspace on a second machine and running `init` restores it fully. |
+| 10 | **Contribute flow.** Branch → PR → back to default; `contribute` skill; people-policy check (deterministic + reviewer agent); consistency-reviewer; cross-brain `search`. | The shared-brain scenarios of the checklist pass on Claude Code against the sandbox shared brain. |
+
+## Milestone C — Pilot-ready
+
+| # | Chunk | Done when |
+| --- | --- | --- |
+| 11 | **`upgrade`.** Bump pin, re-render from the render record, diff for hand-edited template files, warning for overridden skills. | Upgrading the dogfood workspace between two core versions keeps every user file and shows the expected diffs. |
+| 12 | **Release and pilot.** Copilot smoke test, scenario checklist and fixture workspace finalised, docs (requirements incl. `gh`, getting started), npm release, pilot team onboarded. | A pilot team member goes from nothing to a working workspace with the published package and the docs alone. |
+
+## Dependencies
+
+```
+1 → 2 → 3 → 4 ─┐
+     └→ 5 ─────┴→ 6 → 7          (A)
+     └→ 8 ───────────→ 9 → 10    (B; 9 also needs 6)
+                 5, 9 → 11 → 12  (C)
+```
