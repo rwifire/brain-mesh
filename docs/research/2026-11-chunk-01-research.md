@@ -120,11 +120,13 @@ Mapping: `read` → Claude `Read` / Copilot `read`; `search` → `Grep, Glob` / 
 ### Q4.3 Pre-commit hook on Windows
 **Answer:** A `#!/bin/sh` hook in `.mesh/hooks/` enabled with `git config core.hooksPath .mesh/hooks` runs on Windows from Git Bash **and** from PowerShell, can call `node`, prints its warning on stderr, and with `exit 0` never blocks the commit. When stderr is captured (as in the agent's tool), Windows PowerShell 5.1 wraps the line as a NativeCommandError although the commit succeeds; an interactive console was not tested. This machine has `core.autocrlf=true` (git warned LF→CRLF); the template `.gitattributes` must therefore exist before the first commit. Linux not verified (sh hooks are git's native case). VS Code and Obsidian-git commits not tested.
 **Source:** local experiment: scratch repo, hook script running `git diff --cached --name-only` through `node -e`, commits from Git Bash and PowerShell · **Checked:** 2026-11-22, git 2.55.0.windows.3
+**Linux (chunk 2):** the same `sh` + `node` hook mechanism passes in CI on ubuntu-latest and windows-latest ([run 45052385422](https://github.com/rwifire/brain-mesh/actions/runs/45052385422)).
 **Consequence for brain-mesh:** Hook design confirmed. Keep the hook a thin `sh` wrapper that calls a Node script; word the warning so it doesn't read as a failure in PowerShell. `init` writes `.gitattributes` before its first commit.
 
 ### Q4.4 `npx` start-up and offline use
 **Answer:** `npx -y cowsay@1.6.0`: first run about 2.7 s, cached run about 1.0 s; with `npm_config_offline=true` a cached version runs offline. Linux not verified; invocation from Claude/Copilot not timed separately.
 **Source:** local experiment · **Checked:** 2026-11-22, Node 26.7.0 / npm bundled, Windows
+**Linux (chunk 2):** `npx -y --package <brain-mesh tarball> brain-mesh version --json` in CI: ubuntu-latest cold 1.0–1.3 s, cached 0.4–0.5 s; windows-latest cold 6.6–10.6 s, cached 0.9–1.3 s; locally on Windows cold 2.0 s, cached 1.1 s ([run 45052385422](https://github.com/rwifire/brain-mesh/actions/runs/45052385422)).
 **Consequence for brain-mesh:** About 1 s overhead per call is acceptable for agent use; skills should batch work into few CLI calls (e.g. one `doctor --json`, not one call per file). `init` warms the cache with one call.
 
 ## 5 Libraries
