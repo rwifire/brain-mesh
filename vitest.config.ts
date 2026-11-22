@@ -2,6 +2,8 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
+    // show console output of passing tests too (the e2e npx timing line in CI logs)
+    silent: false,
     projects: [
       {
         test: {
