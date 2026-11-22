@@ -87,3 +87,12 @@ Spec ([spec.md](../spec.md)) and glossary:
 - [ ] 12: add the open question of what happens to a user-namespace workspace repo when an EMU account is deprovisioned.
 - [ ] 4.1: note that personal skills in `~/.claude/skills/` override workspace skills with the same name.
 - [ ] Decide whether Claude skills pre-approve a scoped `Bash(npx -y brain-mesh@<pin>:*)` instead of no shell approval.
+
+## Deferred minors from chunk 2
+
+Small fixes the chunk 2 final review raised and left open; none blocks chunk 3.
+
+- [ ] In non-JSON mode, commander's "Did you mean …?" suggestion makes a usage error two lines (and the suggestion is odd after `--`).
+- [ ] `--help`, `help <command>` and `--version` print plain text even with `--json`; return an envelope or document the exemption.
+- [ ] A command's own `--help` doesn't list `--json` (it is registered once on the program).
+- [ ] `Owner` patterns in `brain.yaml` are looser than `GitHubLogin` (`@a--b`, a trailing hyphen and more than 39 characters pass).
