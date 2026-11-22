@@ -98,6 +98,25 @@ describe('main', () => {
     expect(human).toEqual({ code: 0, out: 'done\n', err: 'brain-mesh: warning: careful\n' });
   });
 
+  it('a bare -- is a missing command', async () => {
+    const r = await run(['--json', '--']);
+    expect(r.code).toBe(2);
+    expect(envelope(r.out)).toMatchObject({ ok: false, error: { code: 'E_USAGE', message: 'missing command' } });
+  });
+
+  it('help for an unknown command is a usage error', async () => {
+    const r = await run(['--json', 'help', 'bogus']);
+    expect(r.code).toBe(2);
+    expect(envelope(r.out)).toMatchObject({ ok: false, error: { code: 'E_USAGE' } });
+    expect(r.err).toBe('');
+  });
+
+  it('help for a known command exits 0 and writes to stdout', async () => {
+    const r = await run(['help', 'version']);
+    expect(r.code).toBe(0);
+    expect(r.out).toContain('print the brain-mesh version');
+  });
+
   it('--help exits 0 and writes to stdout', async () => {
     const r = await run(['--help']);
     expect(r.code).toBe(0);

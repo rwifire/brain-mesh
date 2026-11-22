@@ -41,7 +41,7 @@ export async function main(
     return error.exitCode;
   };
 
-  if (argv.filter((a) => a !== '--json').length === 0) {
+  if (argv.filter((a) => a !== '--json' && a !== '--').length === 0) {
     return fail(new CliError(ErrorCode.Usage, 'missing command', ExitCode.Usage));
   }
 
@@ -70,7 +70,11 @@ export async function main(
     return ExitCode.Ok;
   } catch (err) {
     if (err instanceof CommanderError) {
-      if (exitZeroCodes.has(err.code)) return ExitCode.Ok;
+      if (exitZeroCodes.has(err.code)) {
+        if (err.exitCode === 0) return ExitCode.Ok;
+        // commander shows help as an error when no valid command was reached (e.g. `help bogus`)
+        return fail(new CliError(ErrorCode.Usage, 'missing or unknown command', ExitCode.Usage));
+      }
       return fail(new CliError(ErrorCode.Usage, err.message.replace(/^error: /, ''), ExitCode.Usage));
     }
     if (err instanceof CliError) return fail(err);
