@@ -1,0 +1,9 @@
+version: 1
+brain_mesh: 0.0.0
+user: octo-user
+mounts:
+  - id: brain-team-platform
+    url: https://github.com/acme/brain-team-platform.git
+    mode: contribute
+  - id: brain-ideas
+    mode: contribute

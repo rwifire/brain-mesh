@@ -1,0 +1,8 @@
+id: personal
+name: Octo User
+type: personal
+description: Personal notes of octo-user.
+schema: 1
+owner: "@octo-user"
+policies:
+  people: none

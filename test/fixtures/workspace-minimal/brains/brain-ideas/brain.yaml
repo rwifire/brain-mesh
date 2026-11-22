@@ -1,0 +1,8 @@
+id: brain-ideas
+name: Ideas
+type: shared
+description: Unpublished brain for trying out ideas.
+schema: 1
+owner: "@octo-user"
+policies:
+  people: accountability
