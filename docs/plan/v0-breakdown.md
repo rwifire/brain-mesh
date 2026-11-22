@@ -56,3 +56,12 @@ Personal brain plus one shared brain, PRs through GitHub.
      └→ 8 ───────────→ 9 → 10    (B; 9 also needs 6)
                  5, 9 → 11 → 12  (C)
 ```
+
+## Checks carried from chunk 1
+
+Open points from the [chunk 1 research](../research/2026-11-chunk-01-research.md) that later chunks must close:
+
+- **Chunk 2:** run the pre-commit hook and `npx` timing on Linux in CI.
+- **Chunk 5:** does Copilot CLI show duplicates when a skill exists in both `.claude/skills/` and `.github/skills/`?
+- **Chunk 8:** logged-out `gh` behaviour, tested with a fake `gh`; re-check the team-repo permission endpoint.
+- **Chunk 9:** with Obsidian open, mount and unmount a brain and confirm `.git/` contents don't show up in search.
