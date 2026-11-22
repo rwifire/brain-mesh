@@ -5,3 +5,4 @@ The core and the user's workspace may ship executable code (scripts, tools with 
 ## Consequences
 
 - `doctor` warns about executable files found inside a brain.
+- Brains carry no client skill or agent folders (`.claude/`, `.github/skills/`, `.github/agents/`, `.agents/`): Claude Code auto-loads nested skills, so they would act on every reader's session. `doctor` errors on them.

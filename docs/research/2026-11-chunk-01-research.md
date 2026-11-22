@@ -20,9 +20,9 @@ Checked 2026-11-22 on Windows 11 with Claude Code 2.1.325, gh 2.100.0, git 2.55.
 **Consequence for brain-mesh:** Keep `CLAUDE.md` = `@AGENTS.md`. Since Copilot has no include syntax (Q2.1), `.local/` instructions are **concatenated** into the generated `AGENTS.md`, not imported.
 
 ### Q1.4 Nested discovery
-**Answer:** Skills in `<subdir>/.claude/skills/` load the first time Claude reads or edits a file in that subdirectory. `CLAUDE.md` in subdirectories loads on demand when Claude touches files there; a subdirectory `AGENTS.md` loads the same way if that folder has no `CLAUDE.md`.
+**Answer:** Skills in `<subdir>/.claude/skills/` load the first time Claude reads or edits a file in that subdirectory. `CLAUDE.md` in subdirectories loads on demand when Claude touches files there. A subdirectory `AGENTS.md` is documented to load on demand only when no `CLAUDE.md` exists in the working directory or above, so with the workspace's root `CLAUDE.md` it is **not** loaded by default. A subdirectory `CLAUDE.md` containing `@AGENTS.md` loads on demand and imports relative to itself (inferred from the import rules; the docs show it only at the root).
 **Source:** https://code.claude.com/docs/en/skills, https://code.claude.com/docs/en/memory · **Checked:** 2026-11-22, 2.1.325
-**Consequence for brain-mesh:** A brain's own `AGENTS.md` (5.1) is picked up automatically when an agent reads notes in `brains/<id>/` — brain rules travel with the brain. Brains must not contain a `CLAUDE.md` (it would replace AGENTS.md loading there); `doctor` checks this.
+**Consequence for brain-mesh:** Every brain ships a generated one-line `CLAUDE.md` = `@AGENTS.md`, so its rules load on demand in Claude Code. Brains must not contain client skill or agent folders (`.claude/`, `.github/skills|agents`, `.agents/`): Claude auto-loads nested skills, so a shared brain could inject instructions or scripts into every reader's session (ADR 0003); `doctor` errors on them. Chunk 5 verifies the nested `@AGENTS.md` import.
 
 ### Q1.5 User-owned paths in `.claude/`
 **Answer:** `settings.local.json` and root `CLAUDE.local.md` are personal and not committed; `settings.json`, `skills/`, `agents/`, `commands/`, `rules/`, `output-styles/`, `workflows/`, `agent-memory/` are normally committed.
@@ -34,9 +34,9 @@ Checked 2026-11-22 on Windows 11 with Claude Code 2.1.325, gh 2.100.0, git 2.55.
 Surfaces: **VS** = VS Code agent mode (Copilot harness), **CLI** = Copilot CLI, **Cloud** = Copilot cloud agent on github.com.
 
 ### Q2.1 Instructions
-**Answer:** VS: root `AGENTS.md` or `.github/copilot-instructions.md`, `.github/instructions/**/*.instructions.md` (`applyTo`), nested `AGENTS.md` along paths of files worked on. CLI: `.github/copilot-instructions.md`, `AGENTS.md` and `CLAUDE.md`. Cloud: `copilot-instructions.md`, `instructions/*.instructions.md`, `AGENTS.md` (nested not verified). No include/import syntax anywhere; links are not guaranteed to be followed.
-**Source:** https://code.visualstudio.com/docs/agents/reference/custom-instructions-reference, https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/create-custom-agents-for-cli, https://docs.github.com/en/copilot/reference/customization-cheat-sheet · **Checked:** 2026-11-22, current docs (client versions not installed locally)
-**Consequence for brain-mesh:** Root `AGENTS.md` is the single instruction file for all clients; no `.github/copilot-instructions.md` needed. Nested brain `AGENTS.md` works in VS too. CLI also reads `CLAUDE.md`; its one import line is harmless.
+**Answer:** VS: root `AGENTS.md` or `.github/copilot-instructions.md`, `.github/instructions/**/*.instructions.md` (`applyTo`), nested `AGENTS.md` along paths of files worked on (default in the Copilot harness; the deprecated Local harness needs `chat.useNestedAgentsMdFiles`, off by default). CLI: `.github/copilot-instructions.md`, `AGENTS.md` and `CLAUDE.md`. Cloud: `copilot-instructions.md`, `instructions/*.instructions.md`, `AGENTS.md` (nested not verified). No include/import syntax anywhere; links are not guaranteed to be followed.
+**Source:** https://code.visualstudio.com/docs/agents/reference/custom-instructions-reference, https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/create-custom-agents-for-cli, https://docs.github.com/en/copilot/reference/customization-cheat-sheet · **Checked:** docs as of 2026-11-22 (Copilot clients not installed locally, so no client versions)
+**Consequence for brain-mesh:** Root `AGENTS.md` is the single instruction file for all clients; no `.github/copilot-instructions.md` needed. Nested brain `AGENTS.md` works in the VS Copilot harness by default. CLI also reads `CLAUDE.md`; its one import line is harmless.
 
 ### Q2.2 Skills
 **Answer:** VS: `.github/skills/` only for the Copilot harness; `name` required, must match the folder name (mismatch fails silently), lowercase/digits/hyphens, ≤64 chars; `description` required, ≤1024 chars. CLI: `.github/skills`, `.claude/skills` or `.agents/skills`; `name`, `description` required, `allowed-tools` optional; scripts in the folder are discovered and run via the shell tool. Cloud: supported, folders not verified beyond the cheat sheet.
@@ -81,7 +81,7 @@ Mapping: `read` → Claude `Read` / Copilot `read`; `search` → `Grep, Glob` / 
 ### Q3.1 (gate) Private repos in a managed user's own namespace
 **Answer:** **Yes, unless the enterprise blocks it.** Managed users can own private repos only, collaborate only with enterprise members, and enterprise owners can list these repos and get temporary admin access (owner is emailed, audit-logged). Admins can enable "Block the creation of user namespace repositories" (Enterprise → Policies → Member privileges). The docs do not say what happens to these repos when the user is deprovisioned; temporary access can be used to transfer repos of suspended users.
 **Source:** https://docs.github.com/en/enterprise-cloud@latest/admin/managing-iam/understanding-iam-for-enterprises/abilities-and-restrictions-of-managed-user-accounts, https://docs.github.com/en/enterprise-cloud@latest/admin/enforcing-policies/enforcing-policies-for-your-enterprise/enforcing-repository-management-policies-in-your-enterprise, https://docs.github.com/en/enterprise-cloud@latest/admin/managing-accounts-and-repositories/managing-repositories-in-your-enterprise/accessing-user-owned-repositories-in-your-enterprise · **Checked:** 2026-11-22
-**Consequence for brain-mesh:** Gate passes; ADR 0002 stands. The enterprise must not block user namespace repos (rollout prerequisite). `init` must turn a failed `gh repo create` into a clear message pointing at `--remote <url>` (e.g. a private org repo). What happens on offboarding goes to the rollout consulting.
+**Consequence for brain-mesh:** Gate passes; ADR 0002 stands. The enterprise must not block user namespace repos (rollout prerequisite). `init` must turn a failed `gh repo create` into a clear message pointing at `--remote <url>`. What happens on offboarding goes to the rollout consulting.
 
 ### Q3.2 Calls for the host adapter
 
@@ -89,7 +89,7 @@ Mapping: `read` → Claude `Read` / Copilot `read`; `search` → `Grep, Glob` / 
 | --- | --- | --- | --- |
 | create repo (workspace) | `gh repo create <name> --private --source=. --remote=origin --push` (owner defaults to the authenticated user) | `repo` | name taken; user-namespace repos blocked by policy |
 | get permission | `GET /repos/{owner}/{repo}` → `permissions.{admin,maintain,push,triage,pull}` | `repo` | 404 = no access or no repo |
-| validate owner | `GET /orgs/{org}/teams/{slug}` (404 = no team), then `GET /orgs/{org}/teams/{slug}/repos/{owner}/{repo}` for the team's permission (needs write, Q3.4) | `read:org` | 404; team without write access |
+| validate owner | `GET /orgs/{org}/teams/{slug}` (404 = no team), then `GET /orgs/{org}/teams/{slug}/repos/{owner}/{repo}` for the team's permission (needs write, Q3.4); send `Accept: application/vnd.github.v3.repository+json`, otherwise it returns 204 with no body | `read:org` | 404; team without write access |
 | create PR | `gh pr create --base <default> --head mesh/<user>/<slug> --title … --body-file …` | `repo` | branch not pushed; no push rights |
 
 **Source:** https://docs.github.com/en/rest/repos/repos#get-a-repository, https://docs.github.com/en/rest/teams/teams#get-a-team-by-name, https://cli.github.com/manual/gh_repo_create · **Checked:** 2026-11-22, gh 2.100.0. The team-repo permission endpoint is from the same Teams REST section and is re-checked in chunk 8.
@@ -103,13 +103,13 @@ Mapping: `read` → Claude `Read` / Copilot `read`; `search` → `Grep, Glob` / 
 ### Q3.4 CODEOWNERS
 **Answer:** GitHub reads `.github/CODEOWNERS`, then root `CODEOWNERS`, then `docs/CODEOWNERS`, and uses the first it finds. Owners need **explicit write access** to the repo; owners that don't exist or lack access are silently not assigned; invalid lines are skipped.
 **Source:** https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners · **Checked:** 2026-11-22
-**Consequence for brain-mesh:** Root location is fine, but a `.github/CODEOWNERS` would silently shadow it: `doctor` errors on `CODEOWNERS` in `.github/` or `docs/` of a brain. "Valid owner" means the team exists **and** has write access to the brain repo.
+**Consequence for brain-mesh:** Root location is fine, but a `.github/CODEOWNERS` would silently shadow it: `doctor` errors on `.github/CODEOWNERS` in a brain and warns on a redundant `docs/CODEOWNERS` (the root file wins over it). "Valid owner" means the team exists **and** has write access to the brain repo.
 
 ## 4 Obsidian, git hooks, `npx`
 
 ### Q4.1 Obsidian link settings
 **Answer:** `.obsidian/app.json` keys: `useMarkdownLinks` (default `false`), `newLinkFormat` (`"shortest"` default; `"relative"`, `"absolute"`), `alwaysUpdateLinks` (default `false`), `userIgnoreFilters` (excluded files, default `null`). Template value: `{"useMarkdownLinks": true, "newLinkFormat": "relative", "alwaysUpdateLinks": true}`.
-**Source:** local experiment: key names and defaults read from the installed Obsidian app bundle (`resources/obsidian.asar`); `alwaysUpdateLinks` seen in existing local vault settings. Not verified by toggling in the UI. · **Checked:** 2026-11-22, Obsidian (installed, Windows)
+**Source:** local experiment: key names and defaults read from the installed Obsidian app bundle (`resources/obsidian.asar`); `alwaysUpdateLinks` seen in existing local vault settings. Not verified by toggling in the UI. · **Checked:** 2026-11-22, Obsidian 1.13.7 (Windows)
 **Consequence for brain-mesh:** Exact template for `brains/.obsidian/app.json`; `doctor` checks these three keys.
 
 ### Q4.2 Nested clones inside the vault
@@ -118,7 +118,7 @@ Mapping: `read` → Claude `Read` / Copilot `read`; `search` → `Grep, Glob` / 
 **Consequence for brain-mesh:** Chunk 9 adds a manual check with Obsidian open: mount, unmount, and confirm `.git/` contents don't appear in search. If they do, the template adds `.git` to `userIgnoreFilters`.
 
 ### Q4.3 Pre-commit hook on Windows
-**Answer:** A `#!/bin/sh` hook in `.mesh/hooks/` enabled with `git config core.hooksPath .mesh/hooks` runs on Windows from Git Bash **and** from PowerShell, can call `node`, prints its warning on stderr, and with `exit 0` never blocks the commit. Under Windows PowerShell 5.1 the stderr line is shown as a red NativeCommandError even though the commit succeeds. This machine has `core.autocrlf=true` (git warned LF→CRLF); the template `.gitattributes` must therefore exist before the first commit. Linux not verified (sh hooks are git's native case). VS Code and Obsidian-git commits not tested.
+**Answer:** A `#!/bin/sh` hook in `.mesh/hooks/` enabled with `git config core.hooksPath .mesh/hooks` runs on Windows from Git Bash **and** from PowerShell, can call `node`, prints its warning on stderr, and with `exit 0` never blocks the commit. When stderr is captured (as in the agent's tool), Windows PowerShell 5.1 wraps the line as a NativeCommandError although the commit succeeds; an interactive console was not tested. This machine has `core.autocrlf=true` (git warned LF→CRLF); the template `.gitattributes` must therefore exist before the first commit. Linux not verified (sh hooks are git's native case). VS Code and Obsidian-git commits not tested.
 **Source:** local experiment: scratch repo, hook script running `git diff --cached --name-only` through `node -e`, commits from Git Bash and PowerShell · **Checked:** 2026-11-22, git 2.55.0.windows.3
 **Consequence for brain-mesh:** Hook design confirmed. Keep the hook a thin `sh` wrapper that calls a Node script; word the warning so it doesn't read as a failure in PowerShell. `init` writes `.gitattributes` before its first commit.
 
@@ -133,7 +133,7 @@ Mapping: `read` → Claude `Read` / Copilot `read`; `search` → `Grep, Glob` / 
 | --- | --- | --- | --- |
 | YAML | `yaml` ISC · 2.9.1 · 2026-09 · 330 M; `js-yaml` MIT · 5.5.0 · 2026-10 · 410 M | **yaml** | `parseDocument` keeps comments and the schema header when editing (verified: setting `version` kept `# pinned` and the header line). |
 | Frontmatter | `gray-matter` MIT · 4.0.3 · 2023-07 · 15 M; own split + `yaml` | **own split + yaml** | gray-matter is unmaintained since 2023 and reformats; splitting on the leading `---` block is a few lines and keeps the body byte-identical. |
-| Markdown links | `mdast-util-from-markdown` MIT · 2.1.0 · 2026-10 · 102 M; `markdown-it` MIT · 15.0.3 · 2026-10 · 42 M; `micromark` MIT · 4.0.3 · 2026-09 · 102 M | **mdast-util-from-markdown** (+ `unist-util-visit`) | Verified: gives exact start/end offsets for `[x](../a.md)` and `[x](<a b.md>)` and reference definitions, and skips links in code blocks. Reference-style links need resolving `linkReference` → `definition`. |
+| Markdown links | `mdast-util-from-markdown` MIT · 2.1.0 · 2026-10 · 102 M; `markdown-it` MIT · 15.0.3 · 2026-10 · 42 M; `micromark` MIT · 4.0.3 · 2026-09 · 102 M | **mdast-util-from-markdown** (+ `unist-util-visit`) | Verified: node positions cover the whole link or definition; the **target** span is derived from the node's own source slice (after `](` or `]:`, inside `<…>` or up to the closing `)` with balanced parentheses). Checked for `../ci/runner.md "t"`, `<a b.md>`, `x(1).md` and a definition; links in code blocks are skipped. Reference-style links need resolving `linkReference` → `definition`. |
 | CLI framework | `commander` MIT · 15.1.0 · 2026-11 · 789 M; `citty` MIT · 0.2.2 · 2026-08 · 51 M; `clipanion` MIT · 4.0.0-rc.4 · 2024-09 · 7 M | **commander** | Mature, nested subcommands (`brain new`), global options; clipanion is stale on an rc. |
 | Schemas | `zod` MIT · 4.6.7 · 2026-10 · 472 M; `typebox` MIT · 1.4.7 · 2026-11 + `ajv` MIT · 8.20.0 · 2026-04 | **zod** | One source for types, runtime validation and the published JSON Schemas (zod 4 exports JSON Schema natively). |
 | Git | `execa` MIT · 10.2.1 · 2026-10 · 246 M + system `git`; `simple-git` MIT · 4.1.0 · 2026-11 · 15 M | **execa + git** | Uses the user's own git and credentials unchanged; one thin wrapper, easy to fake in tests. Same wrapper calls `gh`. |
@@ -147,7 +147,7 @@ Mapping: `read` → Claude `Read` / Copilot `read`; `search` → `Grep, Glob` / 
 | --- | --- | --- |
 | 1 | Client mapping table and agent source format replace the "researched later" note. | 9.2 |
 | 2 | `.local/` instructions are concatenated into generated `AGENTS.md` (no includes in Copilot). | 4 (managed vs user files) |
-| 3 | Brains must not contain `CLAUDE.md`; `doctor` checks. Brain `AGENTS.md` loads on demand in both clients. | 5.1, 8 |
+| 3 | Brains ship a generated `CLAUDE.md` = `@AGENTS.md`; no client skill or agent folders in brains, `doctor` errors. | 5.1, 8 |
 | 4 | Rendering writes only render-record entries in `.claude/` and `.github/`; gitignore per entry. | 4 |
 | 5 | Skill `name` = folder name, `description` required. | 7.5 |
 | 6 | Enterprise must allow user namespace repos; `init` falls back with a message to `--remote`. Offboarding handled in rollout consulting. | 3 (requirements), 4, 12 |
@@ -155,4 +155,4 @@ Mapping: `read` → Claude `Read` / Copilot `read`; `search` → `Grep, Glob` / 
 | 8 | Exact Obsidian `app.json` keys. | 6.2 |
 | 9 | Users auto-approve the `npx -y brain-mesh@` prefix themselves; skills don't ship `allowed-tools: shell`. Skills batch CLI calls. | 9.2 |
 | 10 | Library picks recorded; `init` writes `.gitattributes` before its first commit. | 3, 9.3 |
-| 11 | Open checks moved to later chunks: duplicate skills in Copilot CLI (5), mount/unmount with Obsidian open (9), logged-out `gh` (8), Linux runs of hook and `npx` (2 CI). | breakdown |
+| 11 | Open checks moved to later chunks: Linux runs of hook and `npx` (2 CI); `npx` cold start of a realistic package and from inside a client session (5); duplicate skills in Copilot CLI and the nested `@AGENTS.md` import (5); hook from VS Code and Obsidian-git commits (6); logged-out `gh` and the team-repo Accept header (8); mount/unmount with Obsidian open (9). | breakdown |

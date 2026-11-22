@@ -62,6 +62,7 @@ Personal brain plus one shared brain, PRs through GitHub.
 Open points from the [chunk 1 research](../research/2026-11-chunk-01-research.md) that later chunks must close:
 
 - **Chunk 2:** run the pre-commit hook and `npx` timing on Linux in CI.
-- **Chunk 5:** does Copilot CLI show duplicates when a skill exists in both `.claude/skills/` and `.github/skills/`?
-- **Chunk 8:** logged-out `gh` behaviour, tested with a fake `gh`; re-check the team-repo permission endpoint.
+- **Chunk 5:** does Copilot CLI show duplicates when a skill exists in both `.claude/skills/` and `.github/skills/`? Does a brain's `CLAUDE.md` = `@AGENTS.md` load on demand in Claude Code? `npx` cold start of a realistic package and from inside a client session.
+- **Chunk 6:** the pre-commit hook fires from VS Code and Obsidian-git commits on Windows.
+- **Chunk 8:** logged-out `gh` behaviour, tested with a fake `gh`; re-check the team-repo permission endpoint, which needs `Accept: application/vnd.github.v3.repository+json`.
 - **Chunk 9:** with Obsidian open, mount and unmount a brain and confirm `.git/` contents don't show up in search.
