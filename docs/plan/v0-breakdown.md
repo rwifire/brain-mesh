@@ -66,3 +66,24 @@ Open points from the [chunk 1 research](../research/2026-11-chunk-01-research.md
 - **Chunk 6:** the pre-commit hook fires from VS Code and Obsidian-git commits on Windows.
 - **Chunk 8:** logged-out `gh` behaviour, tested with a fake `gh`; re-check the team-repo permission endpoint, which needs `Accept: application/vnd.github.v3.repository+json`.
 - **Chunk 9:** with Obsidian open, mount and unmount a brain and confirm `.git/` contents don't show up in search.
+
+## Deferred minors from chunk 1
+
+Small fixes the chunk 1 final review raised and left open. Fix them before or alongside chunk 2; none blocks it.
+
+Research note ([2026-11-chunk-01-research.md](../research/2026-11-chunk-01-research.md)):
+
+- [ ] Re-query the npm weekly download figures in section 5; they look too high.
+- [ ] Say how Vitest snapshots will be handled in the Tests row of section 5.
+- [ ] Add the exact commands to the Source lines of the local experiments.
+- [ ] Q3.2: cite the actual `gh api` call used.
+- [ ] Fix the off section references in Consequences 3, 5 and 6.
+
+Spec ([spec.md](../spec.md)) and glossary:
+
+- [ ] 9.2: map all four abstract agent tools (`read`, `search`, `edit`, `execute`), not only `search` and `execute`.
+- [ ] Define "render record" in the spec and in [GLOSSARY.md](../../GLOSSARY.md).
+- [ ] Fix the workspace tree comment that says whole client subfolders are gitignored.
+- [ ] 12: add the open question of what happens to a user-namespace workspace repo when an EMU account is deprovisioned.
+- [ ] 4.1: note that personal skills in `~/.claude/skills/` override workspace skills with the same name.
+- [ ] Decide whether Claude skills pre-approve a scoped `Bash(npx -y brain-mesh@<pin>:*)` instead of no shell approval.
