@@ -103,3 +103,12 @@ Small fixes the chunk 2 final review raised and left open; none blocks chunk 3.
 - [ ] `--help`, `help <command>` and `--version` print plain text even with `--json`; return an envelope or document the exemption.
 - [ ] A command's own `--help` doesn't list `--json` (it is registered once on the program).
 - [ ] `Owner` patterns in `brain.yaml` are looser than `GitHubLogin` (`@a--b`, a trailing hyphen and more than 39 characters pass).
+
+## Deferred minors from chunk 3
+
+Small fixes the chunk 3 final review raised and left open; none blocks chunk 4.
+
+- [ ] Dot folders under `areas/` (e.g. `areas/.trash/`) count as areas and get `area-readme-missing`; skip them like other dot folders.
+- [ ] Notes in `inbox/` are fully parsed although no check reads them (a 70 MB inbox took 22 s); skip parsing ignored places and keep `text` only where a check needs it.
+- [ ] `--offline` is rejected as an unknown option until chunk 8; accepting it as a no-op would be harmless.
+- [ ] `src/brain/frontmatter.ts` and `src/doctor/checks/safety.ts` contain literal BOM characters; write them as `'﻿'`.
