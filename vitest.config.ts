@@ -9,6 +9,8 @@ export default defineConfig({
         test: {
           name: 'unit',
           include: ['test/unit/**/*.test.ts', 'test/helpers/**/*.test.ts'],
+          // Windows CI runners need 5–6 s for tests that copy a fixture workspace and git-init it.
+          testTimeout: 30_000,
         },
       },
       {
