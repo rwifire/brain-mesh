@@ -1,11 +1,11 @@
-import { readdir, readFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile, symlink } from 'node:fs/promises';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
 import { read, run, write } from '../../helpers/cli.js';
 import type { CheckCode } from '../../../src/doctor/codes.js';
 import { GENERATED_CODES } from '../../../src/generate/plan.js';
-import { fullWorkspace, writeFiles } from '../../helpers/workspace.js';
+import { fullWorkspace, removePath, writeFiles } from '../../helpers/workspace.js';
 
 const P = 'brains/brain-team-platform';
 const H = 'brains/personal';
@@ -136,5 +136,61 @@ describe('doctor --fix: conflicts and write boundaries', () => {
     const r = await run(['doctor', '--json'], await fullWorkspace());
     expect(r.json().data.findings).toEqual([]);
     expect(r.code).toBe(0);
+  });
+});
+
+describe('doctor --fix: final-review fixes', () => {
+  it('a case-variant file is never overwritten', async () => {
+    const root = await fullWorkspace();
+    const I = 'brains/brain-ideas';
+    await removePath(root, `${I}/notes/README.md`);
+    await removePath(root, `${I}/AGENTS.md`);
+    await writeFiles(root, { [`${I}/notes/readme.md`]: 'Curated intro I care about.\n', [`${I}/agents.md`]: 'Curated agent rules.\n' });
+    const first = await run(['doctor', '--fix', '--json'], root);
+    expect(first.json().data.findings).toContainEqual(expect.objectContaining({ code: 'generated-path-taken', path: `${I}/notes/README.md` }));
+    expect(first.json().data.findings).toContainEqual(expect.objectContaining({ code: 'generated-path-taken', path: `${I}/AGENTS.md` }));
+    expect(await read(root, `${I}/notes/readme.md`)).toBe('Curated intro I care about.\n');
+    expect(await read(root, `${I}/agents.md`)).toBe('Curated agent rules.\n');
+    const second = await run(['doctor', '--fix', '--json'], root);
+    expect(second.json().data.fixed).toEqual([]);
+  });
+
+  it('never writes through a symlink', async (ctx) => {
+    const root = await fullWorkspace();
+    const I = 'brains/brain-ideas';
+    await removePath(root, `${I}/CLAUDE.md`);
+    try {
+      await symlink('AGENTS.md', join(root, 'brains', 'brain-ideas', 'CLAUDE.md'));
+    } catch {
+      ctx.skip();
+    }
+    const agents = await read(root, `${I}/AGENTS.md`);
+    const r = await run(['doctor', '--fix', '--json'], root);
+    expect(await read(root, `${I}/AGENTS.md`)).toBe(agents);
+    expect(r.json().data.findings).toContainEqual(expect.objectContaining({ code: 'generated-path-taken', path: `${I}/CLAUDE.md` }));
+  });
+
+  it('never writes into an unlisted brain folder', async () => {
+    const root = await fullWorkspace();
+    const S = 'brains/brain-sre';
+    await writeFiles(root, { [`${S}/brain.yaml`]: 'id: brain-sre\nname: SRE\ntype: shared\ndescription: SRE.\nschema: 1\nowner: "@acme/sre"\npolicies:\n  people: accountability\n' });
+    const before = await snapshot(root, S);
+    const r = await run(['doctor', '--fix', '--json'], root);
+    const codes = r.json().data.findings.map((f: { code: string }) => f.code);
+    expect(codes).toContain('brain-unlisted');
+    expect(codes).not.toContain('manifest-invalid');
+    expect(await snapshot(root, S)).toEqual(before);
+  });
+
+  it('a failed write is a warning and the rest is still fixed', async () => {
+    const root = await fullWorkspace();
+    await removePath(root, 'brains/brain-ideas/index.md');
+    await mkdir(join(root, 'brains', 'brain-ideas', 'index.md'));
+    await removePath(root, `${H}/index.md`);
+    const r = await run(['doctor', '--fix', '--json'], root);
+    const json = r.json();
+    expect(json.ok, r.out).toBe(true);
+    expect(json.warnings).toContainEqual(expect.objectContaining({ code: 'W_WRITE_FAILED' }));
+    expect(json.data.fixed).toContainEqual({ code: 'moc-outdated', path: `${H}/index.md` });
   });
 });

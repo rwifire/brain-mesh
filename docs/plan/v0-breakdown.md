@@ -112,3 +112,17 @@ Small fixes the chunk 3 final review raised and left open; none blocks chunk 4.
 - [ ] Notes in `inbox/` are fully parsed although no check reads them (a 70 MB inbox took 22 s); skip parsing ignored places and keep `text` only where a check needs it.
 - [ ] `--offline` is rejected as an unknown option until chunk 8; accepting it as a no-op would be harmless.
 - [ ] `src/brain/frontmatter.ts` and `src/doctor/checks/safety.ts` contain literal BOM characters; write them as `'﻿'`.
+
+## Deferred minors from chunk 4
+
+Small fixes the chunk 4 final review raised and left open.
+
+- [ ] Generated MOC links for names with `#`, `?`, `%` or `]` are unreadable (`c#-tips.md` gives a `link-broken` on the generated block); percent-encode the link and escape `]` in titles. Such names already get `filename-not-kebab`.
+- [ ] `withLinksTo` corner cases: a quoted `"links_to":` key gets a duplicate appended, a blank line inside a block sequence leaves an orphan item, a trailing `...` puts the key in a second document. Re-parse after editing and report instead of writing when `links_to` does not come out right.
+- [ ] Healing a `links_to`-only conflict moves the key to the end of `brain.yaml` (Ruling 10 says it keeps its position).
+- [ ] `withEol` turns every line CRLF in a mixed-EOL file once, curated LF lines included.
+- [ ] Marker lines inside a code fence count as real `brain-mesh` markers in `replaceBlock` (fenced examples are now ignored by `conflict-markers` only).
+- [ ] `conflict-markers` is `fixable: false` even when the hunk is inside a generated block, which `--fix` heals; set `fixable` per finding.
+- [ ] The generated `AGENTS.md` rule text is a plain constant; key it by brain `schema` and pin it with a snapshot so wording edits in later core versions do not churn brains (ADR 0001).
+- [ ] `linksToFor` can put `personal` into a shared brain's `links_to` when it wrongly links to the personal brain; exclude it.
+- [ ] A conflict in curated text still gets its file rewritten for the block below it (the hunk itself is kept byte for byte).

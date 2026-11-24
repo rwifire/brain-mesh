@@ -38,6 +38,7 @@ export const CHECKS = {
   'agents-md-outdated': { severity: 'error', fixable: true, description: "The generated part of a brain's `AGENTS.md` is missing or out of date." },
   'claude-md-missing': { severity: 'error', fixable: true, description: 'A brain has no `CLAUDE.md`, so Claude Code never loads its `AGENTS.md`.' },
   'conflict-markers': { severity: 'error', description: 'A file still contains merge-conflict markers. `doctor --fix` resolves them only inside generated content.' },
+  'generated-path-taken': { severity: 'error', description: 'A generated file cannot be written: its path is a symbolic link, or a file with the same name in a different case exists.' },
   'generated-block-invalid': { severity: 'error', description: 'Generated-block markers are unbalanced or a merge conflict crosses a block boundary; fix it by hand.' },
 } as const satisfies Record<string, { severity: Severity; description: string; fixable?: true }>;
 

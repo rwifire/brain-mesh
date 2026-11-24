@@ -73,6 +73,10 @@ const CASES: Case[] = [
     name: 'conflict-markers (inbox ignored)', code: null,
     patch: (r) => writeFiles(r, { [`${H}/inbox/x.md`]: '<<<<<<< HEAD\nours\n=======\ntheirs\n>>>>>>> pr\n' }),
   },
+  {
+    name: 'conflict-markers (fenced example ignored)', code: null,
+    patch: (r) => edit(r, `${P}/notes/build-glossary.md`, (t) => t + '\n```text\n<<<<<<< HEAD\nours\n=======\ntheirs\n>>>>>>> pr\n```\n'),
+  },
   { name: 'area-readme-missing', code: 'area-readme-missing', at: `${P}/areas/people`, also: ['link-broken', 'link-broken'], patch: (r) => removePath(r, `${P}/areas/people/README.md`) },
   {
     name: 'type-folder-mismatch', code: 'type-folder-mismatch', at: `${P}/maps/ci-performance.md`,

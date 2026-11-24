@@ -35,6 +35,8 @@ export interface BrainModel {
   /** Brain-relative POSIX paths, sorted; no `.git/**`, no symlinks. */
   files: string[];
   dirs: string[];
+  /** Brain-relative symbolic links; never followed, never written through. */
+  symlinks: string[];
   /** Every file ending in `.md`. */
   notes: NoteModel[];
   /** Non-markdown files whose first two bytes are `#!`. */
@@ -75,28 +77,34 @@ function firstIssue(error: z.ZodError): string {
 }
 
 /** Walks `dir` recursively, skipping `.git` entries and symlinks. Paths are POSIX, relative to `dir`. */
-async function walk(dir: string, rel = ''): Promise<{ files: string[]; dirs: string[] }> {
+async function walk(dir: string, rel = ''): Promise<{ files: string[]; dirs: string[]; links: string[] }> {
   const files: string[] = [];
   const dirs: string[] = [];
+  const links: string[] = [];
   let entries;
   try {
     entries = await readdir(dir, { withFileTypes: true });
   } catch {
-    return { files, dirs };
+    return { files, dirs, links };
   }
   for (const entry of entries) {
-    if (entry.name === '.git' || entry.isSymbolicLink()) continue;
+    if (entry.name === '.git') continue;
     const childRel = rel === '' ? entry.name : posix.join(rel, entry.name);
+    if (entry.isSymbolicLink()) {
+      links.push(childRel);
+      continue;
+    }
     if (entry.isDirectory()) {
       dirs.push(childRel);
       const sub = await walk(join(dir, entry.name), childRel);
       files.push(...sub.files);
       dirs.push(...sub.dirs);
+      links.push(...sub.links);
     } else if (entry.isFile()) {
       files.push(childRel);
     }
   }
-  return { files, dirs };
+  return { files, dirs, links };
 }
 
 async function startsWithShebang(path: string): Promise<boolean> {
@@ -186,6 +194,7 @@ export async function loadWorkspace(root: string, overrides: Partial<LoadDeps> =
     const prefix = `${id}/`;
     const files = all.files.filter((f) => f.startsWith(prefix)).map((f) => f.slice(prefix.length)).sort(byString);
     const dirs = all.dirs.filter((d) => d.startsWith(prefix)).map((d) => d.slice(prefix.length)).sort(byString);
+    const symlinks = all.links.filter((l) => l.startsWith(prefix)).map((l) => l.slice(prefix.length)).sort(byString);
     const brainDir = join(brainsDir, id);
     const { manifest, error: manifestError, text: manifestText } = await readManifest(brainDir);
     const mount = id === 'personal' ? null : (mounts.find((m) => m.id === id) ?? null);
@@ -243,6 +252,7 @@ export async function loadWorkspace(root: string, overrides: Partial<LoadDeps> =
       codeownersText,
       files,
       dirs,
+      symlinks,
       notes,
       shebangs,
       dirty,

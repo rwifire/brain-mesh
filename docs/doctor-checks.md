@@ -40,4 +40,5 @@ Generated from `src/doctor/codes.ts`; do not edit by hand. `brain-mesh doctor --
 | `agents-md-outdated` | error | yes | The generated part of a brain's `AGENTS.md` is missing or out of date. |
 | `claude-md-missing` | error | yes | A brain has no `CLAUDE.md`, so Claude Code never loads its `AGENTS.md`. |
 | `conflict-markers` | error |  | A file still contains merge-conflict markers. `doctor --fix` resolves them only inside generated content. |
+| `generated-path-taken` | error |  | A generated file cannot be written: its path is a symbolic link, or a file with the same name in a different case exists. |
 | `generated-block-invalid` | error |  | Generated-block markers are unbalanced or a merge conflict crosses a block boundary; fix it by hand. |
