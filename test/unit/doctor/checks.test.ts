@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { resolveLink } from '../../../src/doctor/checks/links.js';
 import type { CheckCode } from '../../../src/doctor/codes.js';
 import { runChecks } from '../../../src/doctor/run.js';
+import { GENERATED_CODES } from '../../../src/generate/plan.js';
 import { loadWorkspace } from '../../../src/workspace/load.js';
 import { fullWorkspace, removePath, writeFiles } from '../../helpers/workspace.js';
 
@@ -225,7 +226,8 @@ describe('runChecks', () => {
   it.each(CASES)('$name', async (c) => {
     const root = await fullWorkspace();
     await c.patch(root);
-    const findings = runChecks(await loadWorkspace(root));
+    // Follow-on regeneration (MOC lists, links_to, …) is tested in test/unit/generate; drop it unless it is the case's own code.
+    const findings = runChecks(await loadWorkspace(root)).filter((f) => !GENERATED_CODES.has(f.code) || f.code === c.code);
     const expected = c.code === null ? [] : [c.code, ...(c.also ?? [])].sort();
     expect(findings.map((f) => f.code).sort(), JSON.stringify(findings, null, 1)).toEqual(expected);
     if (c.code !== null) {

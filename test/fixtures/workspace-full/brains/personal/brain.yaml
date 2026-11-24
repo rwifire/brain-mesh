@@ -6,3 +6,4 @@ schema: 1
 owner: "@octo-user"
 policies:
   people: none
+links_to: [brain-team-platform]

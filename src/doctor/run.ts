@@ -4,11 +4,12 @@ import { linkChecks } from './checks/links.js';
 import { safetyChecks } from './checks/safety.js';
 import { structureChecks } from './checks/structure.js';
 import { workspaceChecks } from './checks/workspace.js';
+import { generatedChecks } from '../generate/plan.js';
 import { sortFindings, type Finding } from './finding.js';
 
 export type CheckFn = (ws: WorkspaceModel) => Finding[];
 
-const CHECK_FNS: readonly CheckFn[] = [workspaceChecks, structureChecks, frontmatterChecks, linkChecks, safetyChecks];
+const CHECK_FNS: readonly CheckFn[] = [workspaceChecks, structureChecks, frontmatterChecks, linkChecks, safetyChecks, generatedChecks];
 
 /** Runs every check and sorts the findings; with `brain`, keeps that brain's findings and workspace-level ones. */
 export function runChecks(ws: WorkspaceModel, brain?: string): Finding[] {

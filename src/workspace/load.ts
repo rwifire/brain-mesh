@@ -28,6 +28,8 @@ export interface BrainModel {
   mount: Mount | null;
   manifest: BrainManifest | null;
   manifestError: string | null;
+  /** Raw `brain.yaml` text; null when missing or unreadable. */
+  manifestText: string | null;
   /** Brain-relative POSIX paths, sorted; no `.git/**`, no symlinks. */
   files: string[];
   dirs: string[];
@@ -119,21 +121,25 @@ async function exists(path: string): Promise<boolean> {
   }
 }
 
-async function readManifest(brainDir: string): Promise<{ manifest: BrainManifest | null; error: string | null }> {
+async function readManifest(
+  brainDir: string,
+): Promise<{ manifest: BrainManifest | null; error: string | null; text: string | null }> {
   let text: string;
   try {
     text = await readFile(join(brainDir, 'brain.yaml'), 'utf8');
   } catch {
-    return { manifest: null, error: 'brain.yaml is missing' };
+    return { manifest: null, error: 'brain.yaml is missing', text: null };
   }
   let value: unknown;
   try {
     value = parse(text);
   } catch (err) {
-    return { manifest: null, error: err instanceof Error ? err.message.split('\n')[0]! : String(err) };
+    return { manifest: null, error: err instanceof Error ? err.message.split('\n')[0]! : String(err), text };
   }
   const result = BrainManifestSchema.safeParse(value);
-  return result.success ? { manifest: result.data, error: null } : { manifest: null, error: firstIssue(result.error) };
+  return result.success
+    ? { manifest: result.data, error: null, text }
+    : { manifest: null, error: firstIssue(result.error), text };
 }
 
 async function readMesh(root: string): Promise<{ mesh: MeshConfig | null; error: string | null }> {
@@ -179,7 +185,7 @@ export async function loadWorkspace(root: string, overrides: Partial<LoadDeps> =
     const files = all.files.filter((f) => f.startsWith(prefix)).map((f) => f.slice(prefix.length)).sort(byString);
     const dirs = all.dirs.filter((d) => d.startsWith(prefix)).map((d) => d.slice(prefix.length)).sort(byString);
     const brainDir = join(brainsDir, id);
-    const { manifest, error: manifestError } = await readManifest(brainDir);
+    const { manifest, error: manifestError, text: manifestText } = await readManifest(brainDir);
     const mount = id === 'personal' ? null : (mounts.find((m) => m.id === id) ?? null);
 
     const notes: NoteModel[] = [];
@@ -221,6 +227,7 @@ export async function loadWorkspace(root: string, overrides: Partial<LoadDeps> =
       mount,
       manifest,
       manifestError,
+      manifestText,
       files,
       dirs,
       notes,

@@ -1,4 +1,4 @@
-import { CHECKS, type CheckCode, type Severity } from './codes.js';
+import { CHECKS, isFixable, type CheckCode, type Severity } from './codes.js';
 
 export interface Finding {
   code: CheckCode;
@@ -9,13 +9,22 @@ export interface Finding {
   path: string | null;
   line?: number;
   message: string;
+  /** `doctor --fix` resolves it. */
+  fixable: boolean;
 }
 
 export function finding(
   code: CheckCode,
   f: { brain: string | null; path: string | null; line?: number; message: string },
 ): Finding {
-  const out: Finding = { code, severity: CHECKS[code].severity, brain: f.brain, path: f.path, message: f.message };
+  const out: Finding = {
+    code,
+    severity: CHECKS[code].severity,
+    brain: f.brain,
+    path: f.path,
+    message: f.message,
+    fixable: isFixable(code),
+  };
   if (f.line !== undefined) out.line = f.line;
   return out;
 }

@@ -120,10 +120,4 @@ describe('doctor', () => {
     expect(other.code).toBe(2);
     expect(json(other.out).error.message).toContain('mesh.yaml is invalid');
   });
-
-  it('--fix is not available yet', async () => {
-    const r = await run(['doctor', '--fix', '--json'], await fullWorkspace());
-    expect(r.code).toBe(2);
-    expect(json(r.out)).toMatchObject({ ok: false, error: { code: 'E_USAGE' } });
-  });
 });

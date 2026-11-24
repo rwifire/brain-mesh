@@ -8,3 +8,4 @@ requires: ">=0.3"
 owner: "@acme/platform"
 policies:
   people: accountability
+links_to: [brain-handbook]

@@ -32,20 +32,29 @@ export const CHECKS = {
   'codeowners-shadowed': { severity: 'error', description: 'A brain has `.github/CODEOWNERS`, which hides the generated root `CODEOWNERS` on GitHub.' },
   'codeowners-redundant': { severity: 'warning', description: 'A brain has `docs/CODEOWNERS`, which duplicates the generated root file.' },
   'read-mount-dirty': { severity: 'warning', description: 'A `read` mount has uncommitted changes.' },
-} as const satisfies Record<string, { severity: Severity; description: string }>;
+  'links-to-outdated': { severity: 'error', fixable: true, description: '`links_to` in `brain.yaml` does not list the brains this brain links to.' },
+  'generated-block-invalid': { severity: 'error', description: 'Generated-block markers are unbalanced or a merge conflict crosses a block boundary; fix it by hand.' },
+} as const satisfies Record<string, { severity: Severity; description: string; fixable?: true }>;
+
+/** Whether `doctor --fix` resolves findings with this code. */
+export function isFixable(code: CheckCode): boolean {
+  return 'fixable' in CHECKS[code];
+}
 
 export type CheckCode = keyof typeof CHECKS;
 
 /** The page published as `docs/doctor-checks.md`. */
 export function checksMarkdown(): string {
-  const rows = Object.entries(CHECKS).map(([code, c]) => `| \`${code}\` | ${c.severity} | ${c.description} |`);
+  const rows = Object.entries(CHECKS).map(
+    ([code, c]) => `| \`${code}\` | ${c.severity} | ${'fixable' in c ? 'yes' : ''} | ${c.description} |`,
+  );
   return [
     '# doctor checks',
     '',
     'Generated from `src/doctor/codes.ts`; do not edit by hand. `brain-mesh doctor --json` reports every finding with one of these codes. An error makes `doctor` exit with 1.',
     '',
-    '| Code | Severity | Checks |',
-    '| --- | --- | --- |',
+    '| Code | Severity | `--fix` | Checks |',
+    '| --- | --- | --- | --- |',
     ...rows,
     '',
   ].join('\n');
