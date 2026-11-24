@@ -174,3 +174,24 @@ Mapping: `read` → Claude `Read` / Copilot `read`; `search` → `Grep, Glob` / 
 ### Copilot CLI and a skill in both `.claude/skills/` and `.github/skills/`
 **Answer:** Not verified: Copilot CLI is not installed on this machine.
 **Consequence for brain-mesh:** Moved to the chunk 12 Copilot smoke test. Rendering keeps both folders for now (VS Code reads only `.github/skills/`, Claude Code only `.claude/skills/`).
+
+## Chunk 6 checks
+
+### `init` against github.com
+**Answer:** Works end to end. In an empty folder whose path contains spaces, `init --name bm-init-check --json` took 8.4 s:
+- it created a private repo with default branch `main` (`gh repo view --json visibility,defaultBranchRef` → `PRIVATE main`);
+- it pushed 13 files, all stored with LF (`git ls-files --eol`);
+- it set `core.hooksPath` to `.mesh/hooks`;
+- it reported 0 `doctor` errors and 0 warnings.
+
+Afterwards, in the new workspace:
+- a commit mixing `brains/personal/` and `tools/` printed the heads-up and succeeded;
+- `brain-mesh commit -m …` committed only the personal file and pushed it (local `HEAD` = remote `main`);
+- a second `init` with the same `--name` failed with `E_REPO_CREATE` and named `--name` and `--remote`, and its folder stayed empty, so gh's "Name already exists" text matches.
+
+**Source:** local run of `node dist/cli.js init --name bm-init-check --json`, then `doctor --json`, a mixed `git commit` and `commit --json` · **Checked:** 2026-11-24, gh 2.100.0, git 2.55.0.windows.3, Windows
+**Consequence for brain-mesh:** Spec 4 "Creating" holds as implemented. The test repo `bm-init-check` is deleted by hand; `gh repo delete` needs the `delete_repo` scope.
+
+### Pre-commit hook from VS Code and Obsidian-git (Windows)
+**Answer:** Not checked yet. Both editors run the same `git` with `core.hooksPath`, so the hook should fire, but an editor may start git with a `PATH` that has no `node`; the hook then stays silent rather than blocking the commit.
+**Consequence for brain-mesh:** Moved to chunk 7, checked once dogfooding starts in those editors.
