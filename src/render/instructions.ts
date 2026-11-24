@@ -28,7 +28,9 @@ function mountTable(ws: WorkspaceModel): string {
 
 /** The workspace's root `AGENTS.md`: core conventions, the mount table, then every `.local/*.md`. */
 export function workspaceAgentsMd(template: string, ws: WorkspaceModel, cli: string, local: LocalInstruction[]): string {
-  let text = withNewline(fill(template, cli).replace('{{mounts}}', mountTable(ws)));
+  // A function replacement: `$&`, `$'` and `$$` in a brain's description must stay literal.
+  const table = mountTable(ws);
+  let text = withNewline(fill(template, cli).replace('{{mounts}}', () => table));
   for (const l of [...local].sort((a, b) => byString(a.name, b.name))) {
     text += `\n<!-- from .local/${l.name} -->\n${withNewline(l.text)}`;
   }

@@ -56,6 +56,15 @@ describe('workspaceAgentsMd', () => {
     expect(await render(root)).toContain('| `brain-ideas` | contribute | no | a \\| b |');
   });
 
+  it('dollar patterns in a description are kept verbatim', async () => {
+    const root = await fullWorkspace();
+    const rel = 'brains/brain-ideas/brain.yaml';
+    await write(root, rel, (await read(root, rel)).replace('Unpublished brain for trying out ideas.', () => "\"Costs in $$ and $' tail $& end\""));
+    const text = await render(root);
+    expect(text).toContain("| `brain-ideas` | contribute | no | Costs in $$ and $' tail $& end |");
+    expect(text.match(/# AI workspace/g)).toHaveLength(1);
+  });
+
   it('ends with exactly one newline', async () => expect(/[^\n]\n$/.test(await render(await fullWorkspace()))).toBe(true));
 });
 

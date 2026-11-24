@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { lstat, mkdir, readFile, readdir, rmdir, unlink, writeFile } from 'node:fs/promises';
-import { dirname, join, posix } from 'node:path';
+import { dirname, join, posix, resolve, sep } from 'node:path';
 import { replaceBlock, withEol } from '../generate/blocks.js';
 import { CliError, ErrorCode, ExitCode, type Warning } from '../output.js';
 import { loadWorkspace, type WorkspaceModel } from '../workspace/load.js';
@@ -18,6 +18,8 @@ export interface RenderEntry {
   content: Buffer;
   /** Client skill folder (`.claude/skills/<n>/`) whose files are owned or refused together. */
   group?: string;
+  /** A skill file other than `SKILL.md`: compared and written byte for byte, never line-ending adjusted. */
+  bytes?: boolean;
 }
 
 export interface RecordEntry {
@@ -68,12 +70,16 @@ export function planWorkspace(
   if (ws.mesh === null) throw new Error('planWorkspace needs a valid mesh.yaml');
   const cli = `npx -y brain-mesh@${ws.mesh.brain_mesh}`;
   const out: RenderEntry[] = [];
-  const managed = (path: string, content: Buffer, group?: string) =>
-    out.push(group === undefined ? { path, kind: 'managed', content } : { path, kind: 'managed', content, group });
+  const managed = (path: string, content: Buffer, group?: string, bytes = false) => {
+    const e: RenderEntry = { path, kind: 'managed', content };
+    if (group !== undefined) e.group = group;
+    if (bytes) e.bytes = true;
+    out.push(e);
+  };
 
   managed('AGENTS.md', utf8(workspaceAgentsMd(core.templates.agentsMd, ws, cli, local.instructions)));
   managed('CLAUDE.md', utf8('@AGENTS.md\n'));
-  for (const s of core.skills) for (const [f, b] of s.files) managed(`.mesh/skills/${s.name}/${f}`, b);
+  for (const s of core.skills) for (const [f, b] of s.files) managed(`.mesh/skills/${s.name}/${f}`, b, undefined, f !== 'SKILL.md');
   for (const a of core.agents) managed(`.mesh/agents/${a.name}.md`, utf8(agentSource(a)));
   for (const [name, text] of core.templates.notes) managed(`.mesh/templates/notes/${name}`, utf8(text));
 
@@ -82,7 +88,7 @@ export function planWorkspace(
     for (const client of ['.claude', '.github']) {
       const folder = `${client}/skills/${s.name}/`;
       clientPaths.push(folder);
-      for (const [f, b] of skillFiles(s, cli)) managed(`${folder}${f}`, b, folder);
+      for (const [f, b] of skillFiles(s, cli)) managed(`${folder}${f}`, b, folder, f !== 'SKILL.md');
     }
   }
   for (const a of overlay(core.agents, local.agents)) {
@@ -146,15 +152,40 @@ async function readLocalInstructions(root: string): Promise<LocalInstruction[]> 
   return out;
 }
 
+const KINDS = new Set<unknown>(['managed', 'seed', 'block']);
+
+/** A workspace-relative POSIX path that cannot leave the workspace. */
+function safePath(p: unknown): p is string {
+  if (typeof p !== 'string' || p === '' || p.startsWith('/') || p.includes('\\') || p.includes(':')) return false;
+  return p.split('/').every((seg) => seg !== '' && seg !== '.' && seg !== '..');
+}
+
+/** The previous record; entries that are malformed or point outside the workspace are dropped. */
 async function readRecord(root: string): Promise<RenderRecord | null> {
   const text = await readText(join(root, ...RECORD_PATH.split('/')));
   if (text === null) return null;
+  let raw: unknown;
   try {
-    const r = JSON.parse(text) as RenderRecord;
-    return Array.isArray(r.files) ? r : null;
+    raw = JSON.parse(text);
   } catch {
     return null;
   }
+  const files = (raw as { files?: unknown } | null)?.files;
+  if (!Array.isArray(files)) return null;
+  const valid = files.filter(
+    (f): f is RecordEntry =>
+      f !== null && typeof f === 'object' && safePath(f.path) && KINDS.has(f.kind) && typeof f.sha256 === 'string',
+  );
+  return { version: 1, brain_mesh: String((raw as { brain_mesh?: unknown }).brain_mesh ?? ''), files: valid };
+}
+
+/** Paths stale removal may delete: only what brain-mesh renders as `managed`. */
+function removable(p: string): boolean {
+  return (
+    p === 'AGENTS.md' ||
+    p === 'CLAUDE.md' ||
+    ['.mesh/', '.claude/skills/', '.claude/agents/', '.github/skills/', '.github/agents/'].some((prefix) => p.startsWith(prefix))
+  );
 }
 
 type Kind = 'missing' | 'file' | 'dir' | 'link' | 'other';
@@ -242,11 +273,13 @@ export async function renderWorkspace(root: string, opts: { core?: CoreSource } 
     }
     if ([...prevPaths].some((p) => p.startsWith(group)) || (await kindOf(abs(dir))) === 'missing') continue;
     const rendered = new Map(entries.filter((e) => e.group === group).map((e) => [e.path, e.content]));
+    const same = (e: RenderEntry, have: Buffer) => (e.bytes ? have.equals(e.content) : lf(have) === lf(e.content));
     let ours = true;
     for (const f of await filesUnder(root, dir)) {
       const want = rendered.get(f);
+      const entry = entries.find((e) => e.path === f);
       const have = want === undefined ? null : await readFile(abs(f)).catch(() => null);
-      if (want === undefined || have === null || lf(have) !== lf(want)) ours = false;
+      if (entry === undefined || have === null || !same(entry, have)) ours = false;
     }
     if (!ours) {
       refusedGroups.add(group);
@@ -267,7 +300,8 @@ export async function renderWorkspace(root: string, opts: { core?: CoreSource } 
     }
   };
 
-  for (const e of entries) {
+  const blocks = entries.filter((e) => e.kind === 'block');
+  for (const e of [...entries.filter((x) => x.kind !== 'block'), ...blocks]) {
     if (e.group !== undefined && refusedGroups.has(e.group)) continue;
     const k = await kindOf(abs(e.path));
     if (k === 'link' || (await throughLink(root, e.path))) {
@@ -286,6 +320,12 @@ export async function renderWorkspace(root: string, opts: { core?: CoreSource } 
       continue;
     }
     if (e.kind === 'block') {
+      // Only what was actually rendered is ignored: refused folders and files stay visible to git (final review I1).
+      const ownedClientPaths = [
+        ...new Set(entries.flatMap((x) => (x.group !== undefined && !refusedGroups.has(x.group) ? [x.group] : []))),
+        ...recorded.filter((r) => /^\.(claude|github)\/agents\//.test(r.path)).map((r) => r.path),
+      ];
+      e.content = utf8(gitignoreBlock(ws, ownedClientPaths));
       const text = current === null ? '' : current.toString('utf8');
       const result = replaceBlock(text, 'managed', e.content.toString('utf8'), 'append', 'hash');
       if (!result.ok) {
@@ -298,7 +338,7 @@ export async function renderWorkspace(root: string, opts: { core?: CoreSource } 
       continue;
     }
     // managed
-    if (current !== null && lf(current) === lf(e.content)) {
+    if (current !== null && (e.bytes ? current.equals(e.content) : lf(current) === lf(e.content))) {
       recorded.push({ path: e.path, kind: 'managed', sha256: sha256(e.content) });
       continue;
     }
@@ -307,8 +347,7 @@ export async function renderWorkspace(root: string, opts: { core?: CoreSource } 
       taken(e.path, 'the file exists and was not rendered by brain-mesh');
       continue;
     }
-    const isText = !e.content.includes(0);
-    const next = current !== null && isText ? utf8(withEol(e.content.toString('utf8'), current.toString('utf8'))) : e.content;
+    const next = current !== null && !e.bytes ? utf8(withEol(e.content.toString('utf8'), current.toString('utf8'))) : e.content;
     await put(e, current, next);
     recorded.push({ path: e.path, kind: 'managed', sha256: sha256(e.content) });
   }
@@ -317,7 +356,8 @@ export async function renderWorkspace(root: string, opts: { core?: CoreSource } 
   const now = new Set(entries.map((e) => e.path));
   const removed: string[] = [];
   for (const old of prev?.files ?? []) {
-    if (old.kind !== 'managed' || now.has(old.path)) continue;
+    if (old.kind !== 'managed' || now.has(old.path) || !removable(old.path)) continue;
+    if (!resolve(abs(old.path)).startsWith(resolve(root) + sep)) continue;
     if (await throughLink(root, old.path)) continue;
     if ((await kindOf(abs(old.path))) !== 'file') continue;
     try {

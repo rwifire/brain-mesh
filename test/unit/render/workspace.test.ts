@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
-import { cp, readFile, readdir, stat, symlink } from 'node:fs/promises';
+import { cp, readFile, readdir, rm, stat, symlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, onTestFinished } from 'vitest';
 import { packageCore, type CoreSource } from '../../../src/render/core.js';
 import { RECORD_PATH, renderWorkspace, type RenderRecord } from '../../../src/render/workspace.js';
 import { read, write } from '../../helpers/cli.js';
@@ -199,5 +199,64 @@ describe('note templates', () => {
       ['area', 'decision', 'howto', 'map', 'note', 'person', 'project', 'source'].map((t) => `${t}.md`),
     );
     expect(await read(root, '.mesh/templates/notes/person.md')).toContain('\nresponsibilities:');
+  });
+});
+
+describe('final-review fixes', () => {
+  it('a record entry outside the rendered paths is never removed', async () => {
+    const root = await fullWorkspace();
+    const outside = join(root, '..', `victim-${Date.now()}.txt`);
+    await writeFile(outside, 'keep\n');
+    onTestFinished(() => rm(outside, { force: true }));
+    const name = outside.split(/[\/]/).pop()!;
+    const bad = ['../' + name, 'brains/personal/brain.yaml', 'mesh.yaml'].map((path) => ({ path, kind: 'managed', sha256: 'x' }));
+    await writeFiles(root, { [RECORD_PATH]: JSON.stringify({ version: 1, brain_mesh: '0.4.2', files: bad }) });
+    const r = await render(root);
+    expect(r.removed).toEqual([]);
+    expect(await readFile(outside, 'utf8')).toBe('keep\n');
+    expect(await exists(root, 'brains/personal/brain.yaml')).toBe(true);
+    expect(await exists(root, 'mesh.yaml')).toBe(true);
+  });
+
+  it('a corrupted record counts as empty', async () => {
+    const root = await fullWorkspace();
+    await writeFiles(root, { [RECORD_PATH]: '{"version":1,"files":[{},null,{"path":5}]}' });
+    const r = await render(root);
+    expect(r.written).toContain(RECORD_PATH);
+    expect(r.written).toContain('AGENTS.md');
+  });
+
+  it('the gitignore block leaves out refused paths', async () => {
+    const root = await fullWorkspace();
+    await writeFiles(root, {
+      '.claude/skills/capture/SKILL.md': 'my own capture\n',
+      '.claude/agents/consistency-reviewer.md': 'my own agent\n',
+    });
+    await render(root);
+    const gitignore = await read(root, '.gitignore');
+    expect(gitignore).not.toContain('.claude/skills/capture/');
+    expect(gitignore).not.toContain('.claude/agents/consistency-reviewer.md');
+    expect(gitignore).toContain('.github/skills/capture/\n');
+    expect(gitignore).toContain('.claude/skills/ask/\n');
+  });
+
+  it('a line-ending change in a skill script propagates byte for byte', async () => {
+    const root = await fullWorkspace();
+    await writeFiles(root, { '.local/skills/tool/SKILL.md': '---\nname: tool\ndescription: t\n---\nT\n', '.local/skills/tool/run.sh': 'echo a\r\n' });
+    await render(root);
+    await write(root, '.local/skills/tool/run.sh', 'echo a\n');
+    const r = await render(root);
+    expect(r.written).toContain('.claude/skills/tool/run.sh');
+    expect(await read(root, '.claude/skills/tool/run.sh')).toBe('echo a\n');
+  });
+
+  it('a CRLF client copy of a script is restored to the source bytes', async () => {
+    const root = await fullWorkspace();
+    await render(root);
+    const rel = '.claude/skills/ask/scripts/helper.sh';
+    const source = await read(root, rel);
+    await write(root, rel, source.replace(/\n/g, '\r\n'));
+    await render(root);
+    expect(await read(root, rel)).toBe(source);
   });
 });
