@@ -12,6 +12,9 @@ export const ErrorCode = {
   GhAuth: 'E_GH_AUTH',
   RepoCreate: 'E_REPO_CREATE',
   Git: 'E_GIT',
+  NotEmpty: 'E_NOT_EMPTY',
+  NotSupported: 'E_NOT_SUPPORTED',
+  RemoteNotEmpty: 'E_REMOTE_NOT_EMPTY',
 } as const;
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];
 
