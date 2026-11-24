@@ -40,7 +40,14 @@ describe('the package ships the templates', () => {
     const prefix = await tempDir('bm install-');
     await execa('npm', ['install', '--no-save', '--no-audit', '--no-fund', '--prefix', prefix, inject('tarball')]);
     const pkg = join(prefix, 'node_modules', 'brain-mesh');
-    for (const p of ['templates/workspace/AGENTS.md', 'templates/workspace/gitattributes', 'templates/notes/note.md']) {
+    for (const p of [
+      'templates/workspace/AGENTS.md',
+      'templates/workspace/gitattributes',
+      'templates/notes/note.md',
+      'templates/hooks/pre-commit',
+      'templates/hooks/mixed-commit.mjs',
+      'templates/tools/package.json',
+    ]) {
       await expect(access(join(pkg, ...p.split('/'))), p).resolves.toBeUndefined();
     }
     const mod = (await import(
@@ -50,5 +57,7 @@ describe('the package ships the templates', () => {
     const r = await mod.renderWorkspace(root);
     expect(r.written).toContain('AGENTS.md');
     expect(r.written).toContain('.mesh/templates/notes/note.md');
+    expect(r.written).toContain('.mesh/hooks/pre-commit');
+    expect(r.written).toContain('.mesh/hooks/mixed-commit.mjs');
   });
 });
