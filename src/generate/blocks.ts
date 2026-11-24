@@ -46,10 +46,17 @@ type Unit = { kind: 'line'; line: string } | { kind: 'hunk'; lines: string[]; si
 /**
  * Replaces the block `name` with `body`, healing conflict hunks that lie inside it.
  * Without any markers, adds the block at the end ('append') or the start ('prepend').
+ * `style` 'hash' uses `# brain-mesh:<name>` markers, for files such as `.gitignore`.
  */
-export function replaceBlock(text: string, name: 'index' | 'agents', body: string, where: 'append' | 'prepend'): BlockResult {
-  const OPEN = `<!-- brain-mesh:${name} -->`;
-  const CLOSE = `<!-- /brain-mesh:${name} -->`;
+export function replaceBlock(
+  text: string,
+  name: 'index' | 'agents' | 'managed',
+  body: string,
+  where: 'append' | 'prepend',
+  style: 'html' | 'hash' = 'html',
+): BlockResult {
+  const OPEN = style === 'html' ? `<!-- brain-mesh:${name} -->` : `# brain-mesh:${name}`;
+  const CLOSE = style === 'html' ? `<!-- /brain-mesh:${name} -->` : `# /brain-mesh:${name}`;
   const block = `${OPEN}\n${body}${CLOSE}\n`;
   const lines = splitLines(text.replace(/\r\n/g, '\n'));
   const isMarker = (l: string) => l.trim() === OPEN || l.trim() === CLOSE;

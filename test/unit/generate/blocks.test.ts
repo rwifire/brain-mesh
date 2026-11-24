@@ -92,3 +92,16 @@ describe('withEol', () => {
     expect(withEol('a\n', 'x\n')).toBe('a\n');
   });
 });
+
+describe('replaceBlock hash style', () => {
+  it('appends hash markers', () =>
+    expect(replaceBlock('a\n', 'managed', 'x\n', 'append', 'hash')).toEqual({
+      ok: true,
+      text: 'a\n\n# brain-mesh:managed\nx\n# /brain-mesh:managed\n',
+    }));
+  it('replaces an existing hash block', () =>
+    expect(replaceBlock('a\n\n# brain-mesh:managed\nold\n# /brain-mesh:managed\nb\n', 'managed', 'new\n', 'append', 'hash')).toEqual({
+      ok: true,
+      text: 'a\n\n# brain-mesh:managed\nnew\n# /brain-mesh:managed\nb\n',
+    }));
+});
