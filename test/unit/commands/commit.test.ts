@@ -104,6 +104,19 @@ describe('commit', () => {
     expect(await git(bare, 'log', '-1', '--format=%s', 'main')).toBe('offline');
   });
 
+  it('an intent-to-add file elsewhere leaves an older stash alone', async () => {
+    const { root } = await setup();
+    await writeTree(root, { 'tools/README.md': (await read(root, 'tools/README.md')) + 'old work\n' });
+    await git(root, 'stash', 'push', '-q', '-m', 'old work');
+    await writeTree(root, { 'tools/new.ts': 'export {};\n', 'brains/personal/inbox/a.md': '# A\n' });
+    await git(root, 'add', '-N', 'tools/new.ts');
+    const r = await commit(root, '-m', 'Capture a');
+    expect(r.code).toBe(0);
+    expect(r.json().data.committed).toBe(true);
+    expect(await git(root, 'stash', 'list', '--format=%s')).toBe('On main: old work');
+    expect(await read(root, 'tools/new.ts')).toBe('export {};\n');
+  });
+
   it('no upstream warns', async () => {
     const { root } = await setup();
     await git(root, 'branch', '--unset-upstream');

@@ -6,7 +6,7 @@ import { git, gitOk } from '../git.js';
 import type { Host } from '../host/host.js';
 import type { CommandDef } from '../main.js';
 import { packageVersion } from '../meta.js';
-import { CliError, ErrorCode, ExitCode } from '../output.js';
+import { CliError, ErrorCode, ExitCode, type Warning } from '../output.js';
 import { createWorkspace } from '../workspace/create.js';
 import { loadWorkspace } from '../workspace/load.js';
 
@@ -77,13 +77,23 @@ export function initCommand(deps: { host: Host }): CommandDef {
       }
 
       const pin = packageVersion();
-      await gitOk(root, ['init', '-q', '-b', 'main']);
-      const { warnings } = await createWorkspace(root, { user, pin });
-      await gitOk(root, ['add', '-A']);
-      await gitOk(root, ['commit', '-q', '-m', 'Create brain-mesh workspace']);
-      // After the first commit, which mixes personal and other files on purpose (Ruling 7).
-      await gitOk(root, ['config', 'core.hooksPath', '.mesh/hooks']);
-      await gitOk(root, ['remote', 'add', 'origin', remote]);
+      let warnings: Warning[];
+      try {
+        await gitOk(root, ['init', '-q', '-b', 'main']);
+        ({ warnings } = await createWorkspace(root, { user, pin }));
+        await gitOk(root, ['add', '-A']);
+        // The first commit mixes personal and other files on purpose (Ruling 7): no user hooks, no signing prompt.
+        await gitOk(root, ['-c', 'commit.gpgsign=false', 'commit', '-q', '--no-verify', '-m', 'Create brain-mesh workspace']);
+        await gitOk(root, ['config', 'core.hooksPath', '.mesh/hooks']);
+        await gitOk(root, ['remote', 'add', 'origin', remote]);
+      } catch (err) {
+        // The remote repo exists now and the folder is no longer empty: say how to finish (final review I2).
+        const why = err instanceof Error ? err.message : String(err);
+        throw new CliError(
+          ErrorCode.Git,
+          `${why}. The repo ${remote} exists and ${root} now holds a partly built workspace: empty that folder, then run brain-mesh init --remote ${remote} in it`,
+        );
+      }
       const push = await git(root, ['push', '-q', '-u', 'origin', 'main']);
       if (push.exitCode !== 0) {
         throw new CliError(

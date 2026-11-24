@@ -37,7 +37,7 @@ function text(d: CommitData): string {
 
 /**
  * `commit`: the personal row of spec 7.2 (plan Ruling 13). Commits only `brains/personal/`,
- * then `pull --rebase --autostash` and `push`. Other staged and unstaged changes are left as they were.
+ * then `pull --rebase` (other changes stashed and restored with `--index`) and `push`. Other staged and unstaged changes are left as they were.
  */
 export const commitCommand: CommandDef = {
   name: 'commit',
@@ -73,8 +73,15 @@ export const commitCommand: CommandDef = {
       warnings.push({ code: 'W_NO_UPSTREAM', message: 'the workspace has no upstream branch; nothing was pulled or pushed' });
     } else {
       // A stash popped with --index keeps staged changes staged; --autostash would unstage them.
-      const stashed = (await gitOk(root, ['status', '--porcelain', '--untracked-files=no'])).trim() !== '';
-      if (stashed) await gitOk(root, ['stash', 'push', '-q', '-m', 'brain-mesh commit']);
+      // Only a stash this run created is popped: `stash push` can save nothing (or fail, e.g. on
+      // intent-to-add entries) while status shows changes, and the user's own stash must stay put (final review I3).
+      const stashRef = async () => (await git(root, ['rev-parse', '-q', '--verify', 'refs/stash'])).stdout.trim();
+      let stashed = false;
+      if ((await gitOk(root, ['status', '--porcelain', '--untracked-files=no'])).trim() !== '') {
+        const before = await stashRef();
+        await git(root, ['stash', 'push', '-q', '-m', 'brain-mesh commit']);
+        stashed = (await stashRef()) !== before;
+      }
       const restore = async () => {
         if (!stashed) return;
         const pop = await git(root, ['stash', 'pop', '-q', '--index']);

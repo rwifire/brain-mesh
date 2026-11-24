@@ -162,6 +162,26 @@ describe('init', () => {
     expect(await git(folder, 'log', '-1', '--format=%s')).toBe('Create brain-mesh workspace');
   });
 
+  it('gpg signing does not block the first commit', async () => {
+    await isolateGit({ extra: ['[commit]', '\tgpgsign = true', '[gpg]', '\tprogram = brain-mesh-no-such-gpg'] });
+    const { folder, bare } = await setup();
+    const r = await init(folder, fakeHost({ repoUrl: bare }));
+    expect(r.code).toBe(0);
+    expect(await git(bare, 'rev-list', '--count', 'main')).toBe('1');
+  });
+
+  it('a failure after the repo exists says how to recover', async () => {
+    // A git template whose config already defines origin makes `git remote add origin` fail after the repo exists.
+    const template = await tempDir('bm template-');
+    await writeTree(template, { config: '[remote "origin"]\n\turl = https://example.invalid/taken.git\n' });
+    await isolateGit({ extra: ['[init]', `\ttemplateDir = ${template.replace(/\\/g, '/')}`] });
+    const { folder, bare } = await setup();
+    const r = await init(folder, fakeHost({ repoUrl: bare }));
+    expect(r.json().error.code).toBe('E_GIT');
+    expect(r.json().error.message).toContain(bare);
+    expect(r.json().error.message).toContain('init --remote');
+  });
+
   it('human output', async () => {
     await isolateGit();
     const { folder, bare } = await setup();
