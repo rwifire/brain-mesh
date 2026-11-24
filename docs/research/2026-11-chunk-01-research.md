@@ -158,3 +158,19 @@ Mapping: `read` → Claude `Read` / Copilot `read`; `search` → `Grep, Glob` / 
 | 9 | Users auto-approve the `npx -y brain-mesh@` prefix themselves; skills don't ship `allowed-tools: shell`. Skills batch CLI calls. | 9.2 |
 | 10 | Library picks recorded; `init` writes `.gitattributes` before its first commit. | 3, 9.3 |
 | 11 | Open checks moved to later chunks: Linux runs of hook and `npx` (2 CI); `npx` cold start of a realistic package and from inside a client session (5); duplicate skills in Copilot CLI and the nested `@AGENTS.md` import (5); hook from VS Code and Obsidian-git commits (6); logged-out `gh` and the team-repo Accept header (8); mount/unmount with Obsidian open (9). | breakdown |
+
+## Chunk 5 checks
+
+### Nested `@AGENTS.md` import in a brain (Claude Code)
+**Answer:** Yes. In a rendered workspace (root `CLAUDE.md` = `@AGENTS.md`), with a code word written only into `brains/brain-ideas/AGENTS.md`, `claude -p` was asked to read `brains/brain-ideas/notes/first-idea.md`, open no other file, and print any code word in its loaded instructions. With the brain's `CLAUDE.md` = `@AGENTS.md` it printed the code word; in the same workspace without that `CLAUDE.md` it printed `NONE`.
+**Source:** local experiment, `claude -p "…" --allowedTools Read` from the workspace root · **Checked:** 2026-11-24, Claude Code 2.1.325 (Windows)
+**Consequence for brain-mesh:** Confirms Q1.4: the generated brain `CLAUDE.md` is what makes brain rules load on demand; keep it.
+
+### `npx` start-up of the package with templates
+**Answer:** The packed package now ships `templates/`; `npx -y --package <tarball> brain-mesh version --json` locally on Windows took cold 3.2–6.4 s and cached 1.7–2.0 s; the CI timings are in the e2e log line of each run. Timing from inside a client session was not measured separately: the agent's shell tool runs the same `npx` process.
+**Source:** e2e test `npx from the packed tarball` · **Checked:** 2026-11-24, Node 26.7.0, Windows
+**Consequence for brain-mesh:** No change: about one to two seconds per cached call; skills keep batching.
+
+### Copilot CLI and a skill in both `.claude/skills/` and `.github/skills/`
+**Answer:** Not verified: Copilot CLI is not installed on this machine.
+**Consequence for brain-mesh:** Moved to the chunk 12 Copilot smoke test. Rendering keeps both folders for now (VS Code reads only `.github/skills/`, Claude Code only `.claude/skills/`).

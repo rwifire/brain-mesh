@@ -62,7 +62,8 @@ Personal brain plus one shared brain, PRs through GitHub.
 Open points from the [chunk 1 research](../research/2026-11-chunk-01-research.md) that later chunks must close:
 
 - **Chunk 2 (done):** pre-commit hook mechanism passes on Linux and Windows in CI; `npx` from the packed tarball: Linux cold 1.0–1.3 s, cached 0.4–0.5 s; Windows runners cold 6.6–10.6 s, cached 0.9–1.3 s ([run 45052385422](https://github.com/rwifire/brain-mesh/actions/runs/45052385422)).
-- **Chunk 5:** does Copilot CLI show duplicates when a skill exists in both `.claude/skills/` and `.github/skills/`? Does a brain's `CLAUDE.md` = `@AGENTS.md` load on demand in Claude Code? `npx` cold start of a realistic package and from inside a client session.
+- **Chunk 5 (done):** a brain's `CLAUDE.md` = `@AGENTS.md` loads on demand in Claude Code 2.1.325 (verified); `npx` cold start of the package with templates recorded; the Copilot CLI duplicate-skill question moved to chunk 12. See the [chunk 5 checks](../research/2026-11-chunk-01-research.md#chunk-5-checks).
+- **Chunk 12:** does Copilot CLI show duplicates when a skill exists in both `.claude/skills/` and `.github/skills/`? Checked in the Copilot smoke test; if it does, render skills for Copilot CLI only into `.github/skills/` and document it.
 - **Chunk 6:** the pre-commit hook fires from VS Code and Obsidian-git commits on Windows.
 - **Chunk 8:** logged-out `gh` behaviour, tested with a fake `gh`; re-check the team-repo permission endpoint, which needs `Accept: application/vnd.github.v3.repository+json`.
 - **Chunk 9:** with Obsidian open, mount and unmount a brain and confirm `.git/` contents don't show up in search.

@@ -9,7 +9,10 @@
   },
   "files": [
     "dist",
-    "schemas"
+    "schemas",
+    "templates",
+    "skills",
+    "agents"
   ],
   "engines": {
     "node": ">=22.12.0"

@@ -1,7 +1,10 @@
+import { access } from 'node:fs/promises';
 import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { execa } from 'execa';
 import { describe, expect, inject, it } from 'vitest';
 import { tempDir } from '../helpers/fixtures.js';
+import { fullWorkspace } from '../helpers/workspace.js';
 
 describe('npx from the packed tarball', () => {
   it('runs version --json through npx from the packed tarball, cold then cached', async () => {
@@ -29,5 +32,23 @@ describe('npx from the packed tarball', () => {
     });
     expect(r.exitCode).toBe(2);
     expect(JSON.parse(r.stdout)).toMatchObject({ ok: false, error: { code: 'E_USAGE' } });
+  });
+});
+
+describe('the package ships the templates', () => {
+  it('renders a workspace from the installed package', async () => {
+    const prefix = await tempDir('bm install-');
+    await execa('npm', ['install', '--no-save', '--no-audit', '--no-fund', '--prefix', prefix, inject('tarball')]);
+    const pkg = join(prefix, 'node_modules', 'brain-mesh');
+    for (const p of ['templates/workspace/AGENTS.md', 'templates/workspace/gitattributes', 'templates/notes/note.md']) {
+      await expect(access(join(pkg, ...p.split('/'))), p).resolves.toBeUndefined();
+    }
+    const mod = (await import(
+      pathToFileURL(join(prefix, 'node_modules', 'brain-mesh', 'dist', 'render', 'workspace.js')).href
+    )) as typeof import('../../src/render/workspace.js');
+    const root = await fullWorkspace();
+    const r = await mod.renderWorkspace(root);
+    expect(r.written).toContain('AGENTS.md');
+    expect(r.written).toContain('.mesh/templates/notes/note.md');
   });
 });

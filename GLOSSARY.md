@@ -24,6 +24,14 @@ _Avoid_: Preset, template repo, framework
 A workspace file that belongs to the core and is re-rendered on upgrade; the user changes behaviour through their own files instead.
 _Avoid_: Generated file (when meaning the workspace), system file
 
+**Render record**:
+The file `.mesh/render.json` listing every path brain-mesh rendered into a workspace, its kind (managed, seed or block) and the hash of what was rendered; rendering only ever writes or removes paths it lists or owns.
+_Avoid_: Manifest, lock file
+
+**Seed file**:
+A template file written into a workspace once, when it is missing, and never overwritten afterwards, because the user may edit it by hand (`.gitattributes`, Obsidian settings).
+_Avoid_: Default file, managed file
+
 ## Brains
 
 **Brain**:

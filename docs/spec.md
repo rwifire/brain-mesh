@@ -444,6 +444,7 @@ Verified against current client docs in [chunk 1 research](research/2026-11-chun
 - Skills use the Agent Skills format; `name` equals the folder name (Copilot silently skips a mismatch) and `description` is required.
 - Agents use a brain-mesh source format: frontmatter `name` (= file stem), `description`, `tools` from the abstract set `read | search | edit | execute`, mapped per client (`search` → Claude `Grep, Glob`; `execute` → Claude `Bash`, Copilot `execute`). `model` is omitted so both inherit the session model.
 - Rendering writes only the entries in its render record; everything else in `.claude/` and `.github/` (e.g. `settings*.json`, `CLAUDE.local.md`) belongs to the user.
+- The render record `.mesh/render.json` lists every managed entry (`managed`, `seed`, `block`) with the sha256 of what was rendered; `upgrade` uses it to find hand edits.
 - Skills don't pre-approve the shell. The getting-started docs show how to auto-approve the `npx -y brain-mesh@` prefix in each client, and skills batch work into few CLI calls (about 1 s each).
 
 ### 9.3 Platforms
