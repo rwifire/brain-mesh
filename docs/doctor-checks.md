@@ -11,6 +11,7 @@ Generated from `src/doctor/codes.ts`; do not edit by hand. `brain-mesh doctor --
 | `manifest-invalid` | error | A brain's `brain.yaml` is missing, cannot be parsed or does not match its schema. |
 | `brain-id-mismatch` | error | A brain's id differs from its folder name, or a shared brain's id differs from its repository name. |
 | `requires-unmet` | error | The pinned core version does not satisfy a brain's `requires` range. |
+| `schema-unsupported` | error | A brain's `schema` is newer than this core understands; upgrade brain-mesh. |
 | `folder-unexpected` | error | A shared brain has an `inbox/` or `daily/` folder, which belong to the personal brain only. |
 | `note-misplaced` | error | A markdown note sits outside `notes/`, an area, `maps/`, `projects/` or `sources/`, or in a subfolder of a flat folder. |
 | `area-nested` | error | An area folder contains a subfolder with notes; areas are one level deep. |
@@ -26,6 +27,7 @@ Generated from `src/doctor/codes.ts`; do not edit by hand. `brain-mesh doctor --
 | `link-broken` | error | A link points to a file that does not exist, uses an absolute path, or leaves `brains/`. |
 | `link-unmounted` | warning | A link points into a brain that is not mounted in this workspace. |
 | `link-shared-to-personal` | error | A shared brain links into the personal brain. |
+| `obsidian-link-settings` | error | `brains/.obsidian/app.json` does not set markdown links, the relative link format and automatic link updates. |
 | `executable-file` | warning | A brain contains a script or program (by extension or a `#!` first line). |
 | `client-folder` | error | A brain contains `.claude/`, `.github/skills/`, `.github/agents/` or `.agents/`, which clients load automatically. |
 | `claude-md-invalid` | error | A `CLAUDE.md` in a brain is anything other than the line `@AGENTS.md`. |

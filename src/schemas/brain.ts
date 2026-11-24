@@ -2,13 +2,16 @@ import { validRange } from 'semver';
 import { z } from 'zod';
 import { BrainId, Owner, UserOwner } from './common.js';
 
+/** The highest brain `schema` this core understands. */
+export const SUPPORTED_SCHEMA = 1;
+
 /** Fields every brain manifest has (spec 5.2). */
 const common = {
   name: z.string().min(1),
   description: z.string().min(1),
   topics: z.array(BrainId).optional(),
   out_of_scope: z.string().optional(),
-  /** A value above the one this core supports is reported by `doctor`, not rejected here. */
+  /** A value above SUPPORTED_SCHEMA is reported by `doctor`, not rejected here. */
   schema: z.int().min(1),
   requires: z.string().min(1).refine((v) => validRange(v) !== null, 'not a valid version range').optional(),
   links_to: z.array(BrainId).optional(),

@@ -40,7 +40,8 @@ export const doctorCommand: CommandDef = {
     const ws = await loadWorkspace(root);
     const only = args[0];
     if (only !== undefined && !ws.brains.some((b) => b.id === only) && !ws.missing.includes(only)) {
-      throw new CliError(ErrorCode.UnknownBrain, `unknown brain: ${only}`, ExitCode.Usage);
+      const why = ws.meshError !== null ? ' (mesh.yaml is invalid, so only the personal brain can be checked)' : '';
+      throw new CliError(ErrorCode.UnknownBrain, `unknown brain: ${only}${why}`, ExitCode.Usage);
     }
     const findings = runChecks(ws, only);
     const errors = findings.filter((f) => f.severity === 'error').length;

@@ -9,5 +9,5 @@ describe('CHECKS', () => {
     for (const code of Object.keys(CHECKS)) expect(code).toMatch(/^[a-z]+(-[a-z]+)*$/);
   });
 
-  it('28 checks', () => expect(Object.keys(CHECKS)).toHaveLength(28));
+  it('30 checks', () => expect(Object.keys(CHECKS)).toHaveLength(30));
 });

@@ -1,4 +1,4 @@
-import { symlink } from 'node:fs/promises';
+import { readFile, symlink } from 'node:fs/promises';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { loadWorkspace, type WorkspaceModel } from '../../../src/workspace/load.js';
@@ -89,6 +89,20 @@ describe('loadWorkspace', () => {
     expect(ws.brains.map((b) => b.id)).toEqual(['personal']);
     expect(ws.unlisted).toEqual([]);
     expect(ws.paths.has('brains/brain-team-platform/index.md')).toBe(true);
+  });
+
+  it('an unreadable note becomes a warning, not a crash', async () => {
+    const root = await fullWorkspace();
+    const locked = join(root, 'brains', 'personal', 'notes', 'reading-list.md');
+    const ws = await loadWorkspace(root, {
+      readText: async (path) => {
+        if (path === locked) throw Object.assign(new Error('EPERM: operation not permitted'), { code: 'EPERM' });
+        return readFile(path, 'utf8');
+      },
+    });
+    expect(ws.warnings).toEqual([{ code: 'W_FILE_UNREADABLE', message: 'could not read brains/personal/notes/reading-list.md: EPERM: operation not permitted' }]);
+    expect(brain(ws, 'personal').notes.map((n) => n.path)).not.toContain('notes/reading-list.md');
+    expect(brain(ws, 'brain-team-platform').notes.length).toBeGreaterThan(0);
   });
 
   it('manifest errors', async () => {

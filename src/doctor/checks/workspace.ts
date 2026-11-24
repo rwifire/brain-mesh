@@ -1,4 +1,5 @@
 import { satisfies } from 'semver';
+import { SUPPORTED_SCHEMA } from '../../schemas/brain.js';
 import { repoNameFromUrl } from '../../workspace/url.js';
 import type { WorkspaceModel } from '../../workspace/load.js';
 import { finding, type Finding } from '../finding.js';
@@ -18,6 +19,11 @@ export function workspaceChecks(ws: WorkspaceModel): Finding[] {
     } else if (n > 1) {
       out.push(finding('mount-id-collision', { brain: null, path: 'mesh.yaml', message: `mount id ${id} is listed ${n} times` }));
     }
+  }
+
+  if (ws.obsidianApp !== null) {
+    const problem = obsidianProblem(ws.obsidianApp);
+    if (problem !== null) out.push(finding('obsidian-link-settings', { brain: null, path: 'brains/.obsidian/app.json', message: problem }));
   }
 
   for (const id of ws.missing) {
@@ -45,9 +51,29 @@ export function workspaceChecks(ws: WorkspaceModel): Finding[] {
     if (repo !== null && repo !== m.id) {
       out.push(finding('brain-id-mismatch', { brain: b.id, path, message: `brain id ${m.id} does not match the repository name ${repo}` }));
     }
+    if (m.schema > SUPPORTED_SCHEMA) {
+      out.push(finding('schema-unsupported', { brain: b.id, path, message: `brain schema ${m.schema} is newer than this core supports (${SUPPORTED_SCHEMA})` }));
+    }
     if (ws.mesh !== null && m.requires !== undefined && !satisfies(ws.mesh.brain_mesh, m.requires, { includePrerelease: true })) {
       out.push(finding('requires-unmet', { brain: b.id, path, message: `brain requires brain-mesh ${m.requires}; the workspace pins ${ws.mesh.brain_mesh}` }));
     }
   }
   return out;
+}
+
+/** Spec 6.2: the vault writes relative markdown links and keeps them updated. */
+const OBSIDIAN_LINK_SETTINGS = { useMarkdownLinks: true, newLinkFormat: 'relative', alwaysUpdateLinks: true } as const;
+
+function obsidianProblem(text: string): string | null {
+  let value: unknown;
+  try {
+    value = JSON.parse(text);
+  } catch {
+    return 'app.json is not valid JSON';
+  }
+  const settings = (value !== null && typeof value === 'object' ? value : {}) as Record<string, unknown>;
+  const wrong = Object.entries(OBSIDIAN_LINK_SETTINGS)
+    .filter(([key, want]) => settings[key] !== want)
+    .map(([key, want]) => `${key} must be ${JSON.stringify(want)}`);
+  return wrong.length === 0 ? null : `Obsidian link settings: ${wrong.join(', ')}`;
 }

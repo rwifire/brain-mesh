@@ -14,6 +14,8 @@ export function extractLinks(markdown: string): Link[] {
   const tree: Root = fromMarkdown(markdown);
   const links: Link[] = [];
   visit(tree, (node) => {
+    // `[^1]: text` parses as a definition without the GFM footnote extension; it is not a link.
+    if (node.type === 'definition' && node.label?.startsWith('^')) return;
     if (node.type === 'link' || node.type === 'image' || node.type === 'definition') {
       links.push({ url: node.url, line: node.position?.start.line ?? 1 });
     }

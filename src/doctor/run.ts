@@ -10,8 +10,8 @@ export type CheckFn = (ws: WorkspaceModel) => Finding[];
 
 const CHECK_FNS: readonly CheckFn[] = [workspaceChecks, structureChecks, frontmatterChecks, linkChecks, safetyChecks];
 
-/** Runs every check and sorts the findings; with `brain`, keeps only that brain's findings. */
+/** Runs every check and sorts the findings; with `brain`, keeps that brain's findings and workspace-level ones. */
 export function runChecks(ws: WorkspaceModel, brain?: string): Finding[] {
   const all = CHECK_FNS.flatMap((check) => check(ws));
-  return sortFindings(brain === undefined ? all : all.filter((f) => f.brain === brain));
+  return sortFindings(brain === undefined ? all : all.filter((f) => f.brain === brain || f.brain === null));
 }

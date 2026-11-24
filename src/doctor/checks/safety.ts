@@ -24,9 +24,11 @@ export function safetyChecks(ws: WorkspaceModel): Finding[] {
       }
     }
 
-    for (const folder of CLIENT_FOLDERS) {
-      if (b.dirs.includes(folder)) {
-        out.push(finding('client-folder', { brain: b.id, path: at(folder), message: `${folder}/ in a brain is loaded automatically by AI clients` }));
+    for (const dir of b.dirs) {
+      const lower = dir.toLowerCase();
+      const folder = CLIENT_FOLDERS.find((f) => lower === f || lower.endsWith(`/${f}`));
+      if (folder !== undefined) {
+        out.push(finding('client-folder', { brain: b.id, path: at(dir), message: `${folder}/ in a brain is loaded automatically by AI clients` }));
       }
     }
 

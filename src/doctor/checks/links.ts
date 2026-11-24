@@ -18,6 +18,11 @@ export function resolveLink(fromPath: string, target: string): string | null {
 /** Broken links, links into unmounted brains, and shared → personal links. */
 export function linkChecks(ws: WorkspaceModel): Finding[] {
   const out: Finding[] = [];
+  const brainFolders = new Map<string, string>();
+  for (const p of ws.paths) {
+    const parts = p.split('/');
+    if (parts.length === 2) brainFolders.set(parts[1]!.toLowerCase(), parts[1]!);
+  }
   for (const b of ws.brains) {
     for (const note of b.notes) {
       if (placeOf(note.path).kind === 'ignored') continue;
@@ -42,7 +47,10 @@ export function linkChecks(ws: WorkspaceModel): Finding[] {
           continue;
         }
         if (ws.paths.has(resolved)) continue;
-        if (!ws.paths.has(`brains/${targetBrain}`)) {
+        const actual = brainFolders.get(targetBrain.toLowerCase());
+        if (!ws.paths.has(`brains/${targetBrain}`) && actual !== undefined) {
+          out.push(finding('link-broken', { ...base, message: `link ${link.url} names brain ${targetBrain}, but the folder is ${actual} (case differs)` }));
+        } else if (!ws.paths.has(`brains/${targetBrain}`)) {
           out.push(finding('link-unmounted', { ...base, message: `link ${link.url} points into ${targetBrain}, which is not mounted` }));
         } else {
           out.push(finding('link-broken', { ...base, message: `link target ${link.url} does not exist` }));

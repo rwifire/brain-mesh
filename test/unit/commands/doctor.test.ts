@@ -110,6 +110,17 @@ describe('doctor', () => {
     expect(r.out).toBe('doctor: no problems in 4 brains\n');
   });
 
+  it('a filtered run still reports mesh.yaml problems', async () => {
+    const root = await fullWorkspace();
+    await writeFile(join(root, 'mesh.yaml'), 'version: 2\n', 'utf8');
+    const r = await run(['doctor', 'personal', '--json'], root);
+    expect(r.code).toBe(1);
+    expect(json(r.out).data.findings.map((f: { code: string }) => f.code)).toEqual(['mesh-invalid']);
+    const other = await run(['doctor', 'brain-team-platform', '--json'], root);
+    expect(other.code).toBe(2);
+    expect(json(other.out).error.message).toContain('mesh.yaml is invalid');
+  });
+
   it('--fix is not available yet', async () => {
     const r = await run(['doctor', '--fix', '--json'], await fullWorkspace());
     expect(r.code).toBe(2);

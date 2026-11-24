@@ -178,6 +178,33 @@ const CASES: Case[] = [
     name: 'read-mount-dirty', code: 'read-mount-dirty', at: 'brains/brain-handbook',
     patch: (r) => writeFiles(r, { 'brains/brain-handbook/areas/engineering/draft.md': note('howto') }),
   },
+  // Final review fixes
+  {
+    name: 'client-folder (nested)', code: 'client-folder', at: `${P}/areas/ci/.claude`,
+    patch: (r) => writeFiles(r, { [`${P}/areas/ci/.claude/skills/x/SKILL.md`]: 'x\n' }),
+  },
+  { name: 'client-folder (inbox, other case)', code: 'client-folder', at: `${H}/inbox/.Claude`, patch: (r) => writeFiles(r, { [`${H}/inbox/.Claude/x.md`]: 'x\n' }) },
+  {
+    name: 'footnotes are not links', code: null,
+    patch: (r) => edit(r, `${P}/notes/build-glossary.md`, (t) => t + '\nA claim.[^1]\n\n[^1]: Ibid.\n'),
+  },
+  {
+    name: 'link-broken (brain folder case)', code: 'link-broken', at: `${P}/notes/build-glossary.md`,
+    patch: (r) => edit(r, `${P}/notes/build-glossary.md`, (t) => t + '\n[x](../../Brain-Handbook/index.md)\n'),
+  },
+  {
+    name: 'obsidian-link-settings', code: 'obsidian-link-settings', at: 'brains/.obsidian/app.json',
+    patch: (r) => writeFiles(r, { 'brains/.obsidian/app.json': '{"useMarkdownLinks": false, "newLinkFormat": "shortest", "alwaysUpdateLinks": true}\n' }),
+  },
+  {
+    name: 'obsidian-link-settings (not json)', code: 'obsidian-link-settings', at: 'brains/.obsidian/app.json',
+    patch: (r) => writeFiles(r, { 'brains/.obsidian/app.json': '{' }),
+  },
+  { name: 'obsidian settings without app.json are not checked', code: null, patch: (r) => removePath(r, 'brains/.obsidian') },
+  {
+    name: 'schema-unsupported', code: 'schema-unsupported', at: `${P}/brain.yaml`,
+    patch: (r) => edit(r, `${P}/brain.yaml`, (t) => t.replace('schema: 1', 'schema: 2')),
+  },
 ];
 
 describe('resolveLink', () => {

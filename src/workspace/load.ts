@@ -50,14 +50,17 @@ export interface WorkspaceModel {
   unlisted: string[];
   /** Every file and dir under `brains/`, workspace-relative POSIX, case-exact. */
   paths: ReadonlySet<string>;
+  /** Text of `brains/.obsidian/app.json`; null when absent or unreadable. */
+  obsidianApp: string | null;
   warnings: Warning[];
 }
 
 export interface LoadDeps {
   isDirty(dir: string): Promise<boolean>;
+  readText(path: string): Promise<string>;
 }
 
-const defaultDeps: LoadDeps = { isDirty: gitIsDirty };
+const defaultDeps: LoadDeps = { isDirty: gitIsDirty, readText: (path) => readFile(path, 'utf8') };
 
 const byString = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
@@ -145,7 +148,8 @@ async function readMesh(root: string): Promise<{ mesh: MeshConfig | null; error:
 }
 
 /** Loads a read-only model of the workspace at `root` (the folder holding `mesh.yaml`). */
-export async function loadWorkspace(root: string, deps: LoadDeps = defaultDeps): Promise<WorkspaceModel> {
+export async function loadWorkspace(root: string, overrides: Partial<LoadDeps> = {}): Promise<WorkspaceModel> {
+  const deps: LoadDeps = { ...defaultDeps, ...overrides };
   const { mesh, error: meshError } = await readMesh(root);
   const brainsDir = join(root, 'brains');
   const all = await walk(brainsDir);
@@ -180,7 +184,14 @@ export async function loadWorkspace(root: string, deps: LoadDeps = defaultDeps):
 
     const notes: NoteModel[] = [];
     for (const path of files.filter((f) => f.endsWith('.md'))) {
-      const text = await readFile(join(brainDir, ...path.split('/')), 'utf8');
+      let text: string;
+      try {
+        text = await deps.readText(join(brainDir, ...path.split('/')));
+      } catch (err) {
+        const reason = err instanceof Error ? err.message.split('\n')[0]! : String(err);
+        warnings.push({ code: 'W_FILE_UNREADABLE', message: `could not read brains/${id}/${path}: ${reason}` });
+        continue;
+      }
       notes.push({ path, text, ...parseNote(text) });
     }
 
@@ -218,5 +229,15 @@ export async function loadWorkspace(root: string, deps: LoadDeps = defaultDeps):
     });
   }
 
-  return { root, mesh, meshError, brains, missing: missing.sort(byString), unlisted, paths, warnings };
+  let obsidianApp: string | null = null;
+  if (paths.has('brains/.obsidian/app.json')) {
+    try {
+      obsidianApp = await deps.readText(join(brainsDir, '.obsidian', 'app.json'));
+    } catch (err) {
+      const reason = err instanceof Error ? err.message.split('\n')[0]! : String(err);
+      warnings.push({ code: 'W_FILE_UNREADABLE', message: `could not read brains/.obsidian/app.json: ${reason}` });
+    }
+  }
+
+  return { root, mesh, meshError, brains, missing: missing.sort(byString), unlisted, paths, obsidianApp, warnings };
 }

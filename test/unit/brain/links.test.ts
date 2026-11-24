@@ -11,6 +11,7 @@ describe('extractLinks', () => {
     ['```\n[a](in-fence.md)\n```', []],
     ['`[a](inline.md)`', []],
     ['[[wiki-link]]', []],
+    ['A claim.[^1]\n\n[^1]: Ibid.', []],
   ])('%j', (md, urls) => expect(extractLinks(md).map((l) => l.url)).toEqual(urls));
 
   it('line numbers', () => expect(extractLinks('x\n\n[a](b.md)')).toEqual([{ url: 'b.md', line: 3 }]));
