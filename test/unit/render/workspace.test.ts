@@ -190,3 +190,14 @@ describe('renderWorkspace', () => {
     await expect(renderWorkspace(await tempDir())).rejects.toMatchObject({ code: 'E_NO_WORKSPACE' });
   });
 });
+
+describe('note templates', () => {
+  it('note templates rendered', async () => {
+    const root = await fullWorkspace();
+    await render(root);
+    expect((await readdir(join(root, '.mesh', 'templates', 'notes'))).sort()).toEqual(
+      ['area', 'decision', 'howto', 'map', 'note', 'person', 'project', 'source'].map((t) => `${t}.md`),
+    );
+    expect(await read(root, '.mesh/templates/notes/person.md')).toContain('\nresponsibilities:');
+  });
+});
