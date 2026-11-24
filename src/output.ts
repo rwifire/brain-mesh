@@ -15,6 +15,7 @@ export const ErrorCode = {
   NotEmpty: 'E_NOT_EMPTY',
   NotSupported: 'E_NOT_SUPPORTED',
   RemoteNotEmpty: 'E_REMOTE_NOT_EMPTY',
+  SyncConflict: 'E_SYNC_CONFLICT',
 } as const;
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];
 
