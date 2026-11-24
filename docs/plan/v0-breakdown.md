@@ -67,6 +67,13 @@ Open points from the [chunk 1 research](../research/2026-11-chunk-01-research.md
 - **Chunk 8:** logged-out `gh` behaviour, tested with a fake `gh`; re-check the team-repo permission endpoint, which needs `Accept: application/vnd.github.v3.repository+json`.
 - **Chunk 9:** with Obsidian open, mount and unmount a brain and confirm `.git/` contents don't show up in search.
 
+## Moved from chunk 3
+
+`doctor` checks from spec 8 that need code from a later chunk:
+
+- **Chunk 4:** generated MOC lists, `CODEOWNERS` and `links_to` out of date (needs the generators), and `--fix`.
+- **Chunk 8:** owner validity and push rights (need the host adapter), and `--offline`.
+
 ## Deferred minors from chunk 1
 
 Small fixes the chunk 1 final review raised and left open. Fix them before or alongside chunk 2; none blocks it.

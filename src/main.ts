@@ -35,6 +35,7 @@ export async function main(
   const json = wantsJson(argv);
   const ctx: CommandContext = { cwd: options.cwd ?? process.cwd(), json, io };
   let command: string | null = null;
+  let exitCode: number = ExitCode.Ok;
 
   const fail = (error: CliError): number => {
     emitError(io, json, command, error);
@@ -62,12 +63,13 @@ export async function main(
       const self = actionArgs[actionArgs.length - 1] as Command;
       const output = await def.run(ctx, self.args, self.opts());
       emitSuccess(io, json, def.name, output);
+      exitCode = output.exitCode ?? ExitCode.Ok;
     });
   }
 
   try {
     await program.parseAsync([...argv], { from: 'user' });
-    return ExitCode.Ok;
+    return exitCode;
   } catch (err) {
     if (err instanceof CommanderError) {
       if (exitZeroCodes.has(err.code)) {

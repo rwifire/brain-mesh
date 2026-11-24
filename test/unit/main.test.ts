@@ -16,6 +16,13 @@ const envelope = (out: string) => {
 const versionData = { version: '0.0.0', node: process.version, platform: process.platform };
 
 describe('main', () => {
+  it("a command's exitCode is returned with an ok envelope", async () => {
+    const stub: CommandDef = { name: 'stub', description: 'stub', run: async () => ({ data: 1, text: '', exitCode: 1 }) };
+    const r = await run(['stub', '--json'], [stub]);
+    expect(r.code).toBe(1);
+    expect(envelope(r.out)).toMatchObject({ ok: true, command: 'stub', data: 1 });
+  });
+
   it('version --json prints one success envelope', async () => {
     const r = await run(['version', '--json']);
     expect(r.code).toBe(0);

@@ -3,7 +3,12 @@
  * and stderr stays empty; in human mode text goes to stdout, warnings and errors to stderr.
  */
 
-export const ErrorCode = { Usage: 'E_USAGE', Internal: 'E_INTERNAL' } as const;
+export const ErrorCode = {
+  Usage: 'E_USAGE',
+  Internal: 'E_INTERNAL',
+  NoWorkspace: 'E_NO_WORKSPACE',
+  UnknownBrain: 'E_UNKNOWN_BRAIN',
+} as const;
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];
 
 export const ExitCode = { Ok: 0, Failure: 1, Usage: 2 } as const;
@@ -17,6 +22,8 @@ export interface CommandOutput<T = unknown> {
   data: T;
   text: string;
   warnings?: Warning[];
+  /** Exit code for a command that ran but found problems (e.g. doctor errors); defaults to 0. */
+  exitCode?: number;
 }
 
 export interface SuccessEnvelope<T = unknown> {

@@ -2,6 +2,15 @@
 
 brain-mesh gives every user an AI workspace with a personal brain and mounted shared team brains, all plain markdown in git, usable from Claude Code, GitHub Copilot and Obsidian. See the [specification](docs/spec.md) and the [glossary](GLOSSARY.md).
 
+## Commands
+
+Every command takes `--json` and then prints exactly one JSON envelope on stdout.
+
+| Command | Does |
+| --- | --- |
+| `brain-mesh version` | Print the version |
+| `brain-mesh doctor [brain]` | Check every brain, or one brain, in the workspace; exits 1 when it finds an error. Finding codes: [docs/doctor-checks.md](docs/doctor-checks.md) |
+
 ## Development
 
 Requires Node 22.12 or newer.
