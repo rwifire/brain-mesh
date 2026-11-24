@@ -30,6 +30,8 @@ export interface BrainModel {
   manifestError: string | null;
   /** Raw `brain.yaml` text; null when missing or unreadable. */
   manifestText: string | null;
+  /** Raw root `CODEOWNERS` text; null when missing or unreadable. */
+  codeownersText: string | null;
   /** Brain-relative POSIX paths, sorted; no `.git/**`, no symlinks. */
   files: string[];
   dirs: string[];
@@ -206,6 +208,16 @@ export async function loadWorkspace(root: string, overrides: Partial<LoadDeps> =
       if (await startsWithShebang(join(brainDir, ...path.split('/')))) shebangs.push(path);
     }
 
+    let codeownersText: string | null = null;
+    if (files.includes('CODEOWNERS')) {
+      try {
+        codeownersText = await deps.readText(join(brainDir, 'CODEOWNERS'));
+      } catch (err) {
+        const reason = err instanceof Error ? err.message.split('\n')[0]! : String(err);
+        warnings.push({ code: 'W_FILE_UNREADABLE', message: `could not read brains/${id}/CODEOWNERS: ${reason}` });
+      }
+    }
+
     let dirty: boolean | null = null;
     if (mount?.mode === 'read') {
       if (!(await exists(join(brainDir, '.git')))) {
@@ -228,6 +240,7 @@ export async function loadWorkspace(root: string, overrides: Partial<LoadDeps> =
       manifest,
       manifestError,
       manifestText,
+      codeownersText,
       files,
       dirs,
       notes,

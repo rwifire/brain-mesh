@@ -5,6 +5,7 @@ import type { CheckFn } from '../doctor/run.js';
 import { BrainManifestSchema, SUPPORTED_SCHEMA, type BrainManifest } from '../schemas/brain.js';
 import type { BrainModel, WorkspaceModel } from '../workspace/load.js';
 import { stripLinksToConflicts } from './blocks.js';
+import { codeownersGenerator } from './codeowners.js';
 import { linksToFor, withLinksTo } from './links-to.js';
 import { mocGenerator } from './moc.js';
 import { planned, type Generator, type GeneratorResult, type PlannedFile } from './planned.js';
@@ -18,10 +19,10 @@ const linksToGenerator: Generator = (ws, b) => {
 };
 
 /** Generators in run order; later chunks' tasks append theirs. */
-export const GENERATORS: Generator[] = [linksToGenerator, mocGenerator];
+export const GENERATORS: Generator[] = [linksToGenerator, mocGenerator, codeownersGenerator];
 
 /** Every code a generator can emit. */
-export const GENERATED_CODES: ReadonlySet<CheckCode> = new Set<CheckCode>(['links-to-outdated', 'generated-block-invalid', 'moc-outdated']);
+export const GENERATED_CODES: ReadonlySet<CheckCode> = new Set<CheckCode>(['links-to-outdated', 'generated-block-invalid', 'moc-outdated', 'codeowners-outdated']);
 
 /** The manifest, or one recovered by dropping `links_to`-only merge conflicts. */
 function recoverManifest(b: BrainModel): BrainManifest | null {
