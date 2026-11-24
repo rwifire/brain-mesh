@@ -33,6 +33,7 @@ export const CHECKS = {
   'codeowners-redundant': { severity: 'warning', description: 'A brain has `docs/CODEOWNERS`, which duplicates the generated root file.' },
   'read-mount-dirty': { severity: 'warning', description: 'A `read` mount has uncommitted changes.' },
   'links-to-outdated': { severity: 'error', fixable: true, description: '`links_to` in `brain.yaml` does not list the brains this brain links to.' },
+  'moc-outdated': { severity: 'error', fixable: true, description: 'A generated MOC list is missing entries, lists notes that no longer belong, or is missing its markers.' },
   'generated-block-invalid': { severity: 'error', description: 'Generated-block markers are unbalanced or a merge conflict crosses a block boundary; fix it by hand.' },
 } as const satisfies Record<string, { severity: Severity; description: string; fixable?: true }>;
 

@@ -65,7 +65,7 @@ const CASES: Case[] = [
     patch: (r) => writeFiles(r, { [`${P}/notes/old/x.md`]: note('note') }),
   },
   { name: 'area-nested', code: 'area-nested', at: `${P}/areas/ci/old`, patch: (r) => writeFiles(r, { [`${P}/areas/ci/old/x.md`]: note('note') }) },
-  { name: 'area-readme-missing', code: 'area-readme-missing', at: `${P}/areas/people`, also: ['link-broken'], patch: (r) => removePath(r, `${P}/areas/people/README.md`) },
+  { name: 'area-readme-missing', code: 'area-readme-missing', at: `${P}/areas/people`, also: ['link-broken', 'link-broken'], patch: (r) => removePath(r, `${P}/areas/people/README.md`) },
   {
     name: 'type-folder-mismatch', code: 'type-folder-mismatch', at: `${P}/maps/ci-performance.md`,
     patch: (r) => edit(r, `${P}/maps/ci-performance.md`, (t) => t.replace('type: map', 'type: note')),

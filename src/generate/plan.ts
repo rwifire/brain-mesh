@@ -4,32 +4,12 @@ import { finding, type Finding } from '../doctor/finding.js';
 import type { CheckFn } from '../doctor/run.js';
 import { BrainManifestSchema, SUPPORTED_SCHEMA, type BrainManifest } from '../schemas/brain.js';
 import type { BrainModel, WorkspaceModel } from '../workspace/load.js';
-import { stripLinksToConflicts, withEol } from './blocks.js';
+import { stripLinksToConflicts } from './blocks.js';
 import { linksToFor, withLinksTo } from './links-to.js';
+import { mocGenerator } from './moc.js';
+import { planned, type Generator, type GeneratorResult, type PlannedFile } from './planned.js';
 
-/** A file a generator manages, with its full intended text. */
-export interface PlannedFile {
-  code: CheckCode;
-  brain: string;
-  /** Workspace-relative POSIX path. */
-  path: string;
-  /** Text on disk; null when the file does not exist. */
-  current: string | null;
-  /** Intended text, line endings already matched to `current`. */
-  next: string;
-}
-
-export interface GeneratorResult {
-  files: PlannedFile[];
-  problems: Finding[];
-}
-
-export type Generator = (ws: WorkspaceModel, b: BrainModel, manifest: BrainManifest) => GeneratorResult;
-
-/** Plans one file; `next` is built with `\n` and converted to the file's line endings. */
-export function planned(code: CheckCode, b: BrainModel, rel: string, current: string | null, next: string): PlannedFile {
-  return { code, brain: b.id, path: `${b.dir}/${rel}`, current, next: withEol(next, current) };
-}
+export { planned, type Generator, type GeneratorResult, type PlannedFile } from './planned.js';
 
 const linksToGenerator: Generator = (ws, b) => {
   if (b.manifestText === null) return { files: [], problems: [] };
@@ -38,10 +18,10 @@ const linksToGenerator: Generator = (ws, b) => {
 };
 
 /** Generators in run order; later chunks' tasks append theirs. */
-export const GENERATORS: Generator[] = [linksToGenerator];
+export const GENERATORS: Generator[] = [linksToGenerator, mocGenerator];
 
 /** Every code a generator can emit. */
-export const GENERATED_CODES: ReadonlySet<CheckCode> = new Set<CheckCode>(['links-to-outdated', 'generated-block-invalid']);
+export const GENERATED_CODES: ReadonlySet<CheckCode> = new Set<CheckCode>(['links-to-outdated', 'generated-block-invalid', 'moc-outdated']);
 
 /** The manifest, or one recovered by dropping `links_to`-only merge conflicts. */
 function recoverManifest(b: BrainModel): BrainManifest | null {

@@ -35,4 +35,5 @@ Generated from `src/doctor/codes.ts`; do not edit by hand. `brain-mesh doctor --
 | `codeowners-redundant` | warning |  | A brain has `docs/CODEOWNERS`, which duplicates the generated root file. |
 | `read-mount-dirty` | warning |  | A `read` mount has uncommitted changes. |
 | `links-to-outdated` | error | yes | `links_to` in `brain.yaml` does not list the brains this brain links to. |
+| `moc-outdated` | error | yes | A generated MOC list is missing entries, lists notes that no longer belong, or is missing its markers. |
 | `generated-block-invalid` | error |  | Generated-block markers are unbalanced or a merge conflict crosses a block boundary; fix it by hand. |

@@ -9,8 +9,8 @@ describe('CHECKS', () => {
     for (const code of Object.keys(CHECKS)) expect(code).toMatch(/^[a-z]+(-[a-z]+)*$/);
   });
 
-  it('32 checks', () => expect(Object.keys(CHECKS)).toHaveLength(32));
+  it('33 checks', () => expect(Object.keys(CHECKS)).toHaveLength(33));
 
   it('fixable codes', () =>
-    expect(Object.entries(CHECKS).filter(([, c]) => 'fixable' in c).map(([k]) => k)).toEqual(['links-to-outdated']));
+    expect(Object.entries(CHECKS).filter(([, c]) => 'fixable' in c).map(([k]) => k)).toEqual(['links-to-outdated', 'moc-outdated']));
 });
