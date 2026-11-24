@@ -9,7 +9,7 @@ const NOT_NOTES = new Set(['readme', 'index', 'agents', 'claude']);
 
 function kebabProblem(name: string, isDir: boolean): boolean {
   if (isDir) return !STEM.test(name);
-  if (name === 'README.md') return false;
+  if (name === 'README.md' || name === 'AGENTS.md' || name === 'CLAUDE.md') return false;
   const dot = name.lastIndexOf('.');
   const stem = dot > 0 ? name.slice(0, dot) : name;
   const ext = dot > 0 ? name.slice(dot + 1) : null;

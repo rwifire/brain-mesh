@@ -26,6 +26,8 @@ export function placeOf(path: string): Place {
   const parts = path.split('/');
   const top = parts[0]!;
   if (top === 'inbox' || hasDotSegment(path)) return { kind: 'ignored' };
+  const name = parts[parts.length - 1]!;
+  if (name === 'AGENTS.md' || name === 'CLAUDE.md') return { kind: 'exempt' };
   if (parts.length === 1) return ROOT_FILES.has(top) ? { kind: 'exempt' } : { kind: 'misplaced' };
   if (top === 'daily') return { kind: 'exempt' };
   if (top === 'areas') {

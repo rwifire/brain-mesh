@@ -1,3 +1,4 @@
+import { satisfies } from 'semver';
 import { repoNameFromUrl } from '../../workspace/url.js';
 import type { WorkspaceModel } from '../../workspace/load.js';
 import { finding, type Finding } from '../finding.js';
@@ -28,6 +29,9 @@ export function workspaceChecks(ws: WorkspaceModel): Finding[] {
   }
 
   for (const b of ws.brains) {
+    if (b.dirty === true) {
+      out.push(finding('read-mount-dirty', { brain: b.id, path: b.dir, message: `read mount ${b.id} has uncommitted changes` }));
+    }
     const path = `${b.dir}/brain.yaml`;
     if (b.manifestError !== null) {
       out.push(finding('manifest-invalid', { brain: b.id, path, message: `brain.yaml is invalid: ${b.manifestError}` }));
@@ -40,6 +44,9 @@ export function workspaceChecks(ws: WorkspaceModel): Finding[] {
     const repo = b.type === 'shared' && b.mount?.url ? repoNameFromUrl(b.mount.url) : null;
     if (repo !== null && repo !== m.id) {
       out.push(finding('brain-id-mismatch', { brain: b.id, path, message: `brain id ${m.id} does not match the repository name ${repo}` }));
+    }
+    if (ws.mesh !== null && m.requires !== undefined && !satisfies(ws.mesh.brain_mesh, m.requires, { includePrerelease: true })) {
+      out.push(finding('requires-unmet', { brain: b.id, path, message: `brain requires brain-mesh ${m.requires}; the workspace pins ${ws.mesh.brain_mesh}` }));
     }
   }
   return out;

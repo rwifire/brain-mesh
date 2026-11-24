@@ -30,6 +30,7 @@ describe('BrainManifestSchema', () => {
     ['unknown key', { ...shared, maintainers: [] }],
     ['schema 0', { ...shared, schema: 0 }],
     ['unknown type', { ...shared, type: 'team' }],
+    ['requires not a range', { ...shared, requires: 'soon' }],
   ])('rejects %s', (_n, input) => expect(BrainManifestSchema.safeParse(input).success).toBe(false));
 
   it('accepts a schema newer than this core', () =>

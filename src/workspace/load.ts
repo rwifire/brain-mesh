@@ -1,4 +1,4 @@
-import { readdir, readFile, stat } from 'node:fs/promises';
+import { open, readdir, readFile, stat } from 'node:fs/promises';
 import { join, posix } from 'node:path';
 import { parse } from 'yaml';
 import type { z } from 'zod';
@@ -33,6 +33,8 @@ export interface BrainModel {
   dirs: string[];
   /** Every file ending in `.md`. */
   notes: NoteModel[];
+  /** Non-markdown files whose first two bytes are `#!`. */
+  shebangs: string[];
   /** Read mounts with their own `.git` only; null when not checked. */
   dirty: boolean | null;
 }
@@ -88,6 +90,21 @@ async function walk(dir: string, rel = ''): Promise<{ files: string[]; dirs: str
     }
   }
   return { files, dirs };
+}
+
+async function startsWithShebang(path: string): Promise<boolean> {
+  try {
+    const handle = await open(path, 'r');
+    try {
+      const buf = Buffer.alloc(2);
+      const { bytesRead } = await handle.read(buf, 0, 2, 0);
+      return bytesRead === 2 && buf.toString('latin1') === '#!';
+    } finally {
+      await handle.close();
+    }
+  } catch {
+    return false;
+  }
 }
 
 async function exists(path: string): Promise<boolean> {
@@ -167,6 +184,11 @@ export async function loadWorkspace(root: string, deps: LoadDeps = defaultDeps):
       notes.push({ path, text, ...parseNote(text) });
     }
 
+    const shebangs: string[] = [];
+    for (const path of files.filter((f) => !f.endsWith('.md'))) {
+      if (await startsWithShebang(join(brainDir, ...path.split('/')))) shebangs.push(path);
+    }
+
     let dirty: boolean | null = null;
     if (mount?.mode === 'read') {
       if (!(await exists(join(brainDir, '.git')))) {
@@ -191,6 +213,7 @@ export async function loadWorkspace(root: string, deps: LoadDeps = defaultDeps):
       files,
       dirs,
       notes,
+      shebangs,
       dirty,
     });
   }
