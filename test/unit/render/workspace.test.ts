@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { cp, readFile, readdir, rm, stat, symlink, writeFile } from 'node:fs/promises';
+import { chmod, cp, readFile, readdir, rm, stat, symlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { describe, expect, it, onTestFinished } from 'vitest';
 import { packageCore, type CoreSource } from '../../../src/render/core.js';
@@ -258,5 +258,27 @@ describe('final-review fixes', () => {
     await write(root, rel, source.replace(/\n/g, '\r\n'));
     await render(root);
     expect(await read(root, rel)).toBe(source);
+  });
+});
+
+describe('hook files', () => {
+  it('renders the hook files', async () => {
+    const root = await fullWorkspace();
+    const r = await render(root);
+    expect(r.record.files.filter((f) => f.path.startsWith('.mesh/hooks/')).map((f) => [f.path, f.kind])).toEqual([
+      ['.mesh/hooks/mixed-commit.mjs', 'managed'],
+      ['.mesh/hooks/pre-commit', 'managed'],
+    ]);
+    expect((await read(root, '.mesh/hooks/pre-commit')).startsWith('#!/bin/sh\n')).toBe(true);
+  });
+
+  it.skipIf(process.platform === 'win32')('pre-commit is executable', async () => {
+    const root = await fullWorkspace();
+    await render(root);
+    const file = join(root, '.mesh', 'hooks', 'pre-commit');
+    expect((await stat(file)).mode & 0o111).not.toBe(0);
+    await chmod(file, 0o644);
+    await render(root);
+    expect((await stat(file)).mode & 0o111).not.toBe(0);
   });
 });

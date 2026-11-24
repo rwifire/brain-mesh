@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { lstat, mkdir, readFile, readdir, rmdir, unlink, writeFile } from 'node:fs/promises';
+import { chmod, lstat, mkdir, readFile, readdir, rmdir, stat, unlink, writeFile } from 'node:fs/promises';
 import { dirname, join, posix, resolve, sep } from 'node:path';
 import { replaceBlock, withEol } from '../generate/blocks.js';
 import { CliError, ErrorCode, ExitCode, type Warning } from '../output.js';
@@ -20,6 +20,8 @@ export interface RenderEntry {
   group?: string;
   /** A skill file other than `SKILL.md`: compared and written byte for byte, never line-ending adjusted. */
   bytes?: boolean;
+  /** Needs the executable bit where the platform has modes (the pre-commit hook). */
+  executable?: boolean;
 }
 
 export interface RecordEntry {
@@ -45,6 +47,8 @@ export interface CoreTemplates {
   obsidianApp: string;
   /** `<type>.md` → text; empty when the core has no note templates. */
   notes: Map<string, string>;
+  /** `.mesh/hooks/<name>` → text; empty when the core has no hooks. */
+  hooks: Map<string, string>;
 }
 
 export interface RenderResult {
@@ -82,6 +86,11 @@ export function planWorkspace(
   for (const s of core.skills) for (const [f, b] of s.files) managed(`.mesh/skills/${s.name}/${f}`, b, undefined, f !== 'SKILL.md');
   for (const a of core.agents) managed(`.mesh/agents/${a.name}.md`, utf8(agentSource(a)));
   for (const [name, text] of core.templates.notes) managed(`.mesh/templates/notes/${name}`, utf8(text));
+  for (const [name, text] of core.templates.hooks) {
+    const e: RenderEntry = { path: `.mesh/hooks/${name}`, kind: 'managed', content: utf8(text), bytes: true };
+    if (name === 'pre-commit') e.executable = true;
+    out.push(e);
+  }
 
   const clientPaths: string[] = [];
   for (const s of overlay(core.skills, local.skills)) {
@@ -108,6 +117,15 @@ function agentSource(a: AgentSource): string {
   return `---\nname: ${a.name}\ndescription: ${JSON.stringify(a.description)}\ntools: [${a.tools.join(', ')}]\n---\n${a.body}`;
 }
 
+/** Sets mode 0o755 when no execute bit is set; a no-op where the platform has no modes. */
+async function makeExecutable(path: string): Promise<void> {
+  try {
+    if (((await stat(path)).mode & 0o111) === 0) await chmod(path, 0o755);
+  } catch {
+    // a failed write was already reported
+  }
+}
+
 async function readText(path: string): Promise<string | null> {
   try {
     return await readFile(path, 'utf8');
@@ -130,11 +148,20 @@ async function readCoreTemplates(dir: string): Promise<CoreTemplates> {
     names = [];
   }
   for (const n of names) notes.set(n, (await readText(join(dir, 'notes', n)))!);
+  const hooks = new Map<string, string>();
+  let hookNames: string[] = [];
+  try {
+    hookNames = (await readdir(join(dir, 'hooks'), { withFileTypes: true })).filter((d) => d.isFile()).map((d) => d.name).sort(byString);
+  } catch {
+    hookNames = [];
+  }
+  for (const n of hookNames) hooks.set(n, (await readText(join(dir, 'hooks', n)))!);
   return {
     agentsMd: await need('workspace/AGENTS.md'),
     gitattributes: await need('workspace/gitattributes'),
     obsidianApp: await need('workspace/obsidian-app.json'),
     notes,
+    hooks,
   };
 }
 
@@ -339,6 +366,7 @@ export async function renderWorkspace(root: string, opts: { core?: CoreSource } 
     }
     // managed
     if (current !== null && (e.bytes ? current.equals(e.content) : lf(current) === lf(e.content))) {
+      if (e.executable) await makeExecutable(abs(e.path));
       recorded.push({ path: e.path, kind: 'managed', sha256: sha256(e.content) });
       continue;
     }
@@ -349,6 +377,7 @@ export async function renderWorkspace(root: string, opts: { core?: CoreSource } 
     }
     const next = current !== null && !e.bytes ? utf8(withEol(e.content.toString('utf8'), current.toString('utf8'))) : e.content;
     await put(e, current, next);
+    if (e.executable) await makeExecutable(abs(e.path));
     recorded.push({ path: e.path, kind: 'managed', sha256: sha256(e.content) });
   }
 
