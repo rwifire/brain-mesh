@@ -8,6 +8,10 @@ export const ErrorCode = {
   Internal: 'E_INTERNAL',
   NoWorkspace: 'E_NO_WORKSPACE',
   UnknownBrain: 'E_UNKNOWN_BRAIN',
+  GhMissing: 'E_GH_MISSING',
+  GhAuth: 'E_GH_AUTH',
+  RepoCreate: 'E_REPO_CREATE',
+  Git: 'E_GIT',
 } as const;
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];
 
