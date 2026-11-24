@@ -9,7 +9,7 @@ Every command takes `--json` and then prints exactly one JSON envelope on stdout
 | Command | Does |
 | --- | --- |
 | `brain-mesh version` | Print the version |
-| `brain-mesh doctor [brain]` | Check every brain, or one brain, in the workspace; exits 1 when it finds an error. Finding codes: [docs/doctor-checks.md](docs/doctor-checks.md) |
+| `brain-mesh doctor [brain] [--fix]` | Check every brain, or one brain, in the workspace; exits 1 when it finds an error. `--fix` regenerates out-of-date generated content (`links_to`, MOC lists, `CODEOWNERS`, the generated part of `AGENTS.md`, a missing `CLAUDE.md`). Finding codes: [docs/doctor-checks.md](docs/doctor-checks.md) |
 
 ## Development
 

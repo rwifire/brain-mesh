@@ -71,7 +71,7 @@ Open points from the [chunk 1 research](../research/2026-11-chunk-01-research.md
 
 `doctor` checks from spec 8 that need code from a later chunk:
 
-- **Chunk 4:** generated MOC lists, `CODEOWNERS` and `links_to` out of date (needs the generators), and `--fix`.
+- **Chunk 4 (done):** generated MOC lists, `CODEOWNERS` and `links_to` out of date (needs the generators), and `--fix`.
 - **Chunk 8:** owner validity and push rights (need the host adapter), and `--offline`.
 
 ## Deferred minors from chunk 1

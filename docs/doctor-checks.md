@@ -39,4 +39,5 @@ Generated from `src/doctor/codes.ts`; do not edit by hand. `brain-mesh doctor --
 | `codeowners-outdated` | error | yes | A shared brain's root `CODEOWNERS` is missing or does not match the brain and area owners. |
 | `agents-md-outdated` | error | yes | The generated part of a brain's `AGENTS.md` is missing or out of date. |
 | `claude-md-missing` | error | yes | A brain has no `CLAUDE.md`, so Claude Code never loads its `AGENTS.md`. |
+| `conflict-markers` | error |  | A file still contains merge-conflict markers. `doctor --fix` resolves them only inside generated content. |
 | `generated-block-invalid` | error |  | Generated-block markers are unbalanced or a merge conflict crosses a block boundary; fix it by hand. |
