@@ -37,4 +37,6 @@ Generated from `src/doctor/codes.ts`; do not edit by hand. `brain-mesh doctor --
 | `links-to-outdated` | error | yes | `links_to` in `brain.yaml` does not list the brains this brain links to. |
 | `moc-outdated` | error | yes | A generated MOC list is missing entries, lists notes that no longer belong, or is missing its markers. |
 | `codeowners-outdated` | error | yes | A shared brain's root `CODEOWNERS` is missing or does not match the brain and area owners. |
+| `agents-md-outdated` | error | yes | The generated part of a brain's `AGENTS.md` is missing or out of date. |
+| `claude-md-missing` | error | yes | A brain has no `CLAUDE.md`, so Claude Code never loads its `AGENTS.md`. |
 | `generated-block-invalid` | error |  | Generated-block markers are unbalanced or a merge conflict crosses a block boundary; fix it by hand. |

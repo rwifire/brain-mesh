@@ -1,3 +1,3 @@
-# brain-handbook
+## Brain-specific notes
 
-Conventions for this brain.
+Nothing yet.

@@ -35,6 +35,8 @@ export const CHECKS = {
   'links-to-outdated': { severity: 'error', fixable: true, description: '`links_to` in `brain.yaml` does not list the brains this brain links to.' },
   'moc-outdated': { severity: 'error', fixable: true, description: 'A generated MOC list is missing entries, lists notes that no longer belong, or is missing its markers.' },
   'codeowners-outdated': { severity: 'error', fixable: true, description: "A shared brain's root `CODEOWNERS` is missing or does not match the brain and area owners." },
+  'agents-md-outdated': { severity: 'error', fixable: true, description: "The generated part of a brain's `AGENTS.md` is missing or out of date." },
+  'claude-md-missing': { severity: 'error', fixable: true, description: 'A brain has no `CLAUDE.md`, so Claude Code never loads its `AGENTS.md`.' },
   'generated-block-invalid': { severity: 'error', description: 'Generated-block markers are unbalanced or a merge conflict crosses a block boundary; fix it by hand.' },
 } as const satisfies Record<string, { severity: Severity; description: string; fixable?: true }>;
 
