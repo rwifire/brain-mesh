@@ -1,0 +1,10 @@
+id: brain-team-platform
+name: Platform Team
+type: shared
+description: CI/CD, build infrastructure, developer tooling, runners.
+topics: [ci, build, runners]
+schema: 1
+requires: ">=0.3"
+owner: "@acme/platform"
+policies:
+  people: accountability

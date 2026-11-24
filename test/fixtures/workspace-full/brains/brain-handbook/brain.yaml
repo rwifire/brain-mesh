@@ -1,0 +1,8 @@
+id: brain-handbook
+name: Engineering Handbook
+type: shared
+description: How engineering works at acme.
+schema: 1
+owner: "@acme/handbook"
+policies:
+  people: accountability
