@@ -1,8 +1,11 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { doctorCommand } from '../../../src/commands/doctor.js';
 import { main } from '../../../src/main.js';
+import { run as runCli, testCommands } from '../../helpers/cli.js';
 import { tempDir } from '../../helpers/fixtures.js';
+import { fakeHost } from '../../helpers/host.js';
 import { captureIo } from '../../helpers/io.js';
 import { fullWorkspace, removePath } from '../../helpers/workspace.js';
 
@@ -11,7 +14,7 @@ const H = 'brains/personal';
 
 const run = async (argv: string[], cwd: string) => {
   const io = captureIo();
-  const code = await main(argv, io, { cwd });
+  const code = await main(argv, io, { cwd, commands: testCommands() });
   return { code, out: io.stdout(), err: io.stderr() };
 };
 const json = (out: string) => {
@@ -119,5 +122,19 @@ describe('doctor', () => {
     const other = await run(['doctor', 'brain-team-platform', '--json'], root);
     expect(other.code).toBe(2);
     expect(json(other.out).error.message).toContain('mesh.yaml is invalid');
+  });
+});
+
+describe('doctor and the host', () => {
+  it('doctor --offline and network findings', async () => {
+    const root = await fullWorkspace();
+    const offline = await runCli(['doctor', '--offline', '--json'], root, [doctorCommand({ host: fakeHost() })]);
+    expect(offline.code).toBe(0);
+    expect(offline.json().warnings.map((w: { code: string }) => w.code)).toContain('W_NETWORK_SKIPPED');
+    const readOnly = fakeHost({ permissions: { 'acme/brain-team-platform': 'read' } });
+    const r = await runCli(['doctor', '--json'], root, [doctorCommand({ host: readOnly })]);
+    expect(r.code).toBe(1);
+    expect(r.json().data.findings.map((f: { code: string }) => f.code)).toEqual(['push-rights-missing']);
+    expect(r.json().data.counts).toEqual({ errors: 1, warnings: 0 });
   });
 });

@@ -6,4 +6,6 @@ import { initCommand } from './init.js';
 import { searchCommand } from './search.js';
 import { versionCommand } from './version.js';
 
-export const defaultCommands: readonly CommandDef[] = [versionCommand, doctorCommand, initCommand({ host: githubHost() }), commitCommand, searchCommand];
+const host = githubHost();
+
+export const defaultCommands: readonly CommandDef[] = [versionCommand, doctorCommand({ host }), initCommand({ host }), commitCommand, searchCommand];
