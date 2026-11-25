@@ -37,7 +37,7 @@ Personal brain plus one shared brain, PRs through GitHub.
 
 | # | Chunk | Done when |
 | --- | --- | --- |
-| 8 | **Host adapter.** gh-based get permission, validate owner, create PR, create workspace repo; `--offline` handling. | Adapter has a fake for tests and a real implementation exercised against a sandbox repo. |
+| 8 | **Host adapter.** gh-based get permission, validate owner, create PR, create workspace repo; `--offline` handling. Also: new brains get their folder skeleton (`.gitkeep` per folder). | Adapter has a fake for tests and a real implementation exercised against a sandbox repo; a new workspace's personal brain shows its folders. |
 | 9 | **Mount lifecycle.** `mount`, `unmount`, `mounts`, `sync` (incl. cloning missing mounts), `brain new` (URL and local), `brain publish`, `init` restore. | Cloning the dogfood workspace on a second machine and running `init` restores it fully. |
 | 10 | **Contribute flow.** Branch → PR → back to default; `contribute` skill; people-policy check (deterministic + reviewer agent); consistency-reviewer; cross-brain `search`. | The shared-brain scenarios of the checklist pass on Claude Code against the sandbox shared brain. |
 
