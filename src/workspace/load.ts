@@ -71,6 +71,21 @@ export interface LoadDeps {
 const defaultDeps: LoadDeps = { isDirty: gitIsDirty, readText: (path) => readFile(path, 'utf8'), parseLinks: true };
 
 const byString = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
+const READ_CONCURRENCY = 64;
+
+/** `fn` over `items` with at most `limit` calls in flight; results keep the input order. */
+async function mapLimit<T, R>(items: readonly T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+  const out = new Array<R>(items.length);
+  let next = 0;
+  const worker = async () => {
+    while (next < items.length) {
+      const i = next++;
+      out[i] = await fn(items[i]!);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return out;
+}
 
 function firstIssue(error: z.ZodError): string {
   const issue = error.issues[0];
@@ -202,17 +217,22 @@ export async function loadWorkspace(root: string, overrides: Partial<LoadDeps> =
     const mount = id === 'personal' ? null : (mounts.find((m) => m.id === id) ?? null);
 
     const notes: NoteModel[] = [];
-    for (const path of files.filter((f) => f.endsWith('.md'))) {
-      let text: string;
-      try {
-        text = await deps.readText(join(brainDir, ...path.split('/')));
-      } catch (err) {
-        const reason = err instanceof Error ? err.message.split('\n')[0]! : String(err);
-        warnings.push({ code: 'W_FILE_UNREADABLE', message: `could not read brains/${id}/${path}: ${reason}` });
-        continue;
+    const mdPaths = files.filter((f) => f.endsWith('.md'));
+    // Read in parallel (bounded), then handle results in path order so output stays deterministic.
+    const texts = await mapLimit(mdPaths, READ_CONCURRENCY, (path) =>
+      deps.readText(join(brainDir, ...path.split('/'))).then(
+        (text) => ({ ok: true as const, text }),
+        (err: unknown) => ({ ok: false as const, reason: err instanceof Error ? err.message.split('\n')[0]! : String(err) }),
+      ),
+    );
+    mdPaths.forEach((path, i) => {
+      const r = texts[i]!;
+      if (!r.ok) {
+        warnings.push({ code: 'W_FILE_UNREADABLE', message: `could not read brains/${id}/${path}: ${r.reason}` });
+        return;
       }
-      notes.push({ path, text, ...parseNote(text, { links: deps.parseLinks }) });
-    }
+      notes.push({ path, text: r.text, ...parseNote(r.text, { links: deps.parseLinks }) });
+    });
 
     const shebangs: string[] = [];
     for (const path of files.filter((f) => !f.endsWith('.md'))) {
