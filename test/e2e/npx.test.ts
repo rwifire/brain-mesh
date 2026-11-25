@@ -1,9 +1,10 @@
-import { access } from 'node:fs/promises';
+import { access, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { execa } from 'execa';
 import { describe, expect, inject, it } from 'vitest';
 import { tempDir } from '../helpers/fixtures.js';
+import { PKG_VERSION } from '../helpers/version.js';
 import { fullWorkspace } from '../helpers/workspace.js';
 
 describe('npx from the packed tarball', () => {
@@ -19,7 +20,7 @@ describe('npx from the packed tarball', () => {
     const cold = await timed();
     const cached = await timed();
     for (const { r } of [cold, cached]) {
-      expect(JSON.parse(r.stdout)).toMatchObject({ ok: true, command: 'version', data: { version: '0.0.0' } });
+      expect(JSON.parse(r.stdout)).toMatchObject({ ok: true, command: 'version', data: { version: PKG_VERSION } });
     }
     console.log(`npx timing on ${process.platform}: cold ${cold.ms} ms, cached ${cached.ms} ms`);
     expect(cached.ms).toBeLessThan(15_000);
@@ -59,5 +60,19 @@ describe('the package ships the templates', () => {
     expect(r.written).toContain('.mesh/templates/notes/note.md');
     expect(r.written).toContain('.mesh/hooks/pre-commit');
     expect(r.written).toContain('.mesh/hooks/mixed-commit.mjs');
+  });
+
+  it('creates a workspace whose skills call the pinned version', async () => {
+    const prefix = await tempDir('bm install-');
+    await execa('npm', ['install', '--no-save', '--no-audit', '--no-fund', '--prefix', prefix, inject('tarball')]);
+    const create = (await import(
+      pathToFileURL(join(prefix, 'node_modules', 'brain-mesh', 'dist', 'workspace', 'create.js')).href
+    )) as typeof import('../../src/workspace/create.js');
+    const root = await tempDir('bm ws-');
+    await create.createWorkspace(root, { user: 'octo-user', pin: PKG_VERSION });
+    for (const name of ['capture', 'ingest', 'ask']) {
+      const text = await readFile(join(root, '.claude', 'skills', name, 'SKILL.md'), 'utf8');
+      expect(text, name).toContain(`npx -y brain-mesh@${PKG_VERSION} `);
+    }
   });
 });
