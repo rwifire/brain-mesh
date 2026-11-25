@@ -66,8 +66,8 @@ Open points from the [chunk 1 research](../research/2026-11-chunk-01-research.md
 - **Chunk 12:** `init` warms the `npx` cache with one call ([research Q4.4](../research/2026-11-chunk-01-research.md)); moved from chunk 6 because the pin can't be fetched before the release.
 - **Chunk 12:** does Copilot CLI show duplicates when a skill exists in both `.claude/skills/` and `.github/skills/`? Checked in the Copilot smoke test; if it does, render skills for Copilot CLI only into `.github/skills/` and document it.
 - **Chunk 6 (done):** `init` and the pre-commit hook; see the [chunk 6 checks](../research/2026-11-chunk-01-research.md#chunk-6-checks).
-- **Chunk 7:** the pre-commit hook fires from VS Code and Obsidian-git commits on Windows (moved from chunk 6: checked once dogfooding starts in those editors).
-- **Chunk 7:** decide the pin of a dogfood workspace before the first npm release: generated files call `npx -y brain-mesh@0.0.0`, which can't be fetched.
+- **Chunk 7:** the pre-commit hook fires from VS Code and Obsidian-git commits on Windows (moved from chunk 6). Ramon checks while dogfooding.
+- **Chunk 7 (done):** the dogfood pin is a published alpha: 0.1.0-alpha.1 on npm under `next`, as `brain-mesh-ai-workspace` (npm refused `brain-mesh` as too similar to `brainmesh`); the command stays `brain-mesh`. The personal scenarios pass on Claude Code 2.1.325 ([run log](../scenarios.md#run-log)).
 - **Chunk 8:** logged-out `gh` behaviour, tested with a fake `gh`; re-check the team-repo permission endpoint, which needs `Accept: application/vnd.github.v3.repository+json`.
 - **Chunk 9:** with Obsidian open, mount and unmount a brain and confirm `.git/` contents don't show up in search.
 

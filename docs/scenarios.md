@@ -106,3 +106,11 @@ After each scenario, check the result with `git -C "$base/workspace" log --stat 
 
 | Date | Version | Scenario | Result | Notes |
 | --- | --- | --- | --- | --- |
+| 2026-11-25 | 0.1.0-alpha.0 | P1 | pass | Needed the PowerShell form of the npx prefix in `--allowedTools` on Windows. |
+| 2026-11-25 | 0.1.0-alpha.0 | P2 | pass | Lines kept byte for byte; the title appears twice because the pasted text starts with its own heading. |
+| 2026-11-25 | 0.1.0-alpha.0 | P3 | fail | Notes, proposal and commit right; the inbox item stayed: `git rm` needs approval and headless Claude Code never auto-approves `Remove-Item`. The 7-day line was kept next to the 3-day change, per spec 7.1, because "Approved" didn't answer the replace question. |
+| 2026-11-25 | 0.1.0-alpha.0 | P4 | fail | Same cause as P3; nothing committed. |
+| 2026-11-25 | 0.1.0-alpha.0 | P5 | pass | Answered from the note (7 days) and pointed to the newer 3-day decision still in the inbox. |
+| 2026-11-25 | 0.1.0-alpha.0 | P6 | pass | Named `@rwifire` as the owner. |
+| 2026-11-25 | 0.1.0-alpha.1 | P3 | pass | Ingest now deletes with `rm`; the deletion is in the one pushed commit; doctor 0 errors. |
+| 2026-11-25 | 0.1.0-alpha.1 | P4 | pass | Moved with `mv` into `sources/` (a git rename) with `type: source`; doctor 0 errors; pushed. |
