@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { RunResult } from '../../../src/git.js';
-import { githubHost, type GhRunner } from '../../../src/host/github.js';
+import { ghFailure, githubHost, type GhRunner } from '../../../src/host/github.js';
 import { CliError } from '../../../src/output.js';
 
 const ok = (stdout = ''): RunResult => ({ exitCode: 0, stdout, stderr: '' });
@@ -19,14 +19,61 @@ function stub(answers: Record<string, RunResult>): GhRunner & { calls: string[][
 }
 
 describe('githubHost', () => {
-  it('login checks auth status first', async () => {
-    const run = stub({ 'auth status': ok(), 'api user --jq .login': ok('octo-user\n') });
+  it('ghFailure', () => {
+    for (const s of [
+      'error connecting to api.github.com',
+      'dial tcp: lookup api.github.com: no such host',
+      'proxyconnect tcp: dial tcp 127.0.0.1:9: connect: connection refused',
+      'Get "https://api.github.com/user": net/http: i/o timeout',
+      // real gh 2.100.0 on Windows, behind a dead proxy
+      'Get "https://api.github.com/user": proxyconnect tcp: dial tcp 127.0.0.1:9: connectex: No connection could be made because the target machine actively refused it.',
+    ]) expect(ghFailure(fail(s)), s).toBe('offline');
+    expect(ghFailure({ exitCode: 4, stdout: '', stderr: '' })).toBe('auth');
+    expect(ghFailure(fail('To get started with GitHub CLI, please run:  gh auth login'))).toBe('auth');
+    expect(ghFailure(fail('gh: Bad credentials (HTTP 401)'))).toBe('auth');
+    expect(ghFailure(fail('gh: Not Found (HTTP 404)'))).toBeNull();
+  });
+
+  it('login probes gh --version first', async () => {
+    const run = stub({ '--version': ok('gh version 2.100.0'), 'auth status': ok(), 'api user --jq .login': ok('octo-user\n') });
     expect(await githubHost(run).login()).toBe('octo-user');
-    expect(run.calls).toEqual([['auth', 'status'], ['api', 'user', '--jq', '.login']]);
+    expect(run.calls).toEqual([['--version'], ['auth', 'status'], ['api', 'user', '--jq', '.login']]);
+  });
+
+  it('a failing gh --version gives E_GH_MISSING', async () => {
+    const run = stub({ '--version': fail("'gh' n'est pas reconnu en tant que commande interne") });
+    await expect(githubHost(run).login()).rejects.toMatchObject({ code: 'E_GH_MISSING' });
+  });
+
+  it('login offline gives E_OFFLINE, not E_GH_AUTH', async () => {
+    const run = stub({ '--version': ok(), 'auth status': fail('X Failed to log in to github.com: error connecting to api.github.com') });
+    await expect(githubHost(run).login()).rejects.toMatchObject({ code: 'E_OFFLINE', message: expect.stringContaining('--offline') });
+  });
+
+  it('auth status blames the token when offline: a probe of the API tells them apart', async () => {
+    // real gh 2.100.0: offline, auth status only says the token is invalid
+    const status = fail('github.com\n  X Failed to log in to github.com using token (GH_TOKEN)\n  - The token in GH_TOKEN is invalid.');
+    const offline = stub({
+      '--version': ok(),
+      'auth status': status,
+      'api user --jq .login': fail('Get "https://api.github.com/user": proxyconnect tcp: dial tcp 127.0.0.1:9: connectex: No connection could be made'),
+    });
+    await expect(githubHost(offline).login()).rejects.toMatchObject({ code: 'E_OFFLINE' });
+    const invalid = stub({ '--version': ok(), 'auth status': status, 'api user --jq .login': fail('gh: Bad credentials (HTTP 401)') });
+    await expect(githubHost(invalid).login()).rejects.toMatchObject({ code: 'E_GH_AUTH' });
+  });
+
+  it('repo create offline gives E_OFFLINE', async () => {
+    const run = stub({ 'repo create ai-workspace --private': fail('error connecting to api.github.com') });
+    await expect(githubHost(run).createPrivateRepo('ai-workspace')).rejects.toMatchObject({ code: 'E_OFFLINE' });
   });
 
   it('logged out gives E_GH_AUTH', async () => {
-    const run = stub({ 'auth status': fail('You are not logged into any GitHub hosts.') });
+    const run = stub({
+      '--version': ok(),
+      'auth status': fail('You are not logged into any GitHub hosts. To log in, run: gh auth login'),
+      'api user --jq .login': { exitCode: 4, stdout: '', stderr: 'To get started with GitHub CLI, please run:  gh auth login' },
+    });
     await expect(githubHost(run).login()).rejects.toMatchObject({ code: 'E_GH_AUTH', message: expect.stringContaining('gh auth login') });
   });
 

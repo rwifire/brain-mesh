@@ -16,6 +16,9 @@ export const ErrorCode = {
   NotSupported: 'E_NOT_SUPPORTED',
   RemoteNotEmpty: 'E_REMOTE_NOT_EMPTY',
   SyncConflict: 'E_SYNC_CONFLICT',
+  Offline: 'E_OFFLINE',
+  Host: 'E_HOST',
+  PrCreate: 'E_PR_CREATE',
 } as const;
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];
 
