@@ -23,8 +23,10 @@ The seed brain has an area `ci` (runner cache note, flaky-test decision), `notes
 Run every scenario from the workspace root with Claude Code in print mode:
 
 ```bash
-claude -p "<prompt>" --allowedTools "Read Write Edit Glob Grep Bash(npx -y brain-mesh-ai-workspace@<version>:*) Bash(rm:*) Bash(mv:*) Bash(ls:*)"
+claude -p "<prompt>" --allowedTools "Read Write Edit Glob Grep Bash(npx -y brain-mesh-ai-workspace@<version>:*) PowerShell(npx -y brain-mesh-ai-workspace@<version>:*) Bash(rm:*) Bash(mv:*) Bash(mkdir:*) Bash(ls:*) PowerShell(Remove-Item:*) PowerShell(Move-Item:*)"
 ```
+
+On Windows, Claude Code runs commands through its PowerShell tool, hence the `PowerShell(…)` entries. Keep the workspace out of Claude Code's own temp folder (`…\Temp\claude\…`): Claude Code refuses to delete files there.
 
 A scenario that needs approval runs twice: first the prompt (the proposal), then `claude -p --continue "Approved, go ahead." --allowedTools "…"` with the same tools.
 

@@ -52,7 +52,7 @@ Then, in this order:
 
    `{{cli}} doctor personal --fix --json`
 
-2. Remove the inbox item. If the user wants to keep it, move it to `brains/personal/sources/<slug>.md` instead and give it frontmatter `type: source`, a one-sentence `summary` and `updated`.
+2. Delete the inbox item as a plain file with `rm <path>` in a POSIX shell (Git Bash on Windows; `Remove-Item` only where no POSIX shell exists), not `git rm`: the commit in the next step stages the deletion. If the user wants to keep it, move it with `mv <path> <target>` to `brains/personal/sources/<slug>.md` instead and give it frontmatter `type: source`, a one-sentence `summary` and `updated`. If the shell refuses, ask the user to approve or delete the file, then commit.
 3. Commit everything in one call, with a message that says *why* the notes changed (e.g. "Ingest platform sync: runner cache decision, flaky-test question"):
 
    `{{cli}} commit -m "<why>" --json`

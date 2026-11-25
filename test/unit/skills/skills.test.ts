@@ -48,6 +48,13 @@ describe('core skills', () => {
     expect(ask).not.toContain('{{cli}} commit');
   });
 
+  it('ingest removes the inbox item as a plain file and leaves staging to commit', async () => {
+    const ingest = await skill('ingest');
+    expect(ingest).toContain('`rm <path>` in a POSIX shell');
+    expect(ingest).toContain('not `git rm`');
+    expect(ingest).toContain('`mv <path> <target>`');
+  });
+
   it('rendered for Claude with the pin filled', async () => {
     const root = await tempDir('bm skills ');
     await createWorkspace(root, { user: 'octo-user', pin: '0.4.2' });
