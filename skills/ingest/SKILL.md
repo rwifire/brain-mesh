@@ -8,7 +8,7 @@ Propose first, write only what the user approves. Append by default: replace or 
 
 ## 1. Pick the input
 
-- If the user named an item, use it. If not, list the files in `brains/personal/inbox/` (oldest first) and ask which one, or use the material in the current chat.
+- If the user named an item, use it. If not, list the `.md` files in `brains/personal/inbox/` (oldest first) and ask which one, or use the material in the current chat.
 - Read the whole input before proposing anything.
 
 ## 2. Route

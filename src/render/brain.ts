@@ -35,6 +35,12 @@ export function manifestYaml(m: BrainManifest): string {
   return lines.join('\n') + '\n';
 }
 
+/** The folders of a new brain, kept in git by an empty `.gitkeep` each (chunk 8 plan, decision 1). */
+export const BRAIN_FOLDERS: Record<'personal' | 'shared', readonly string[]> = {
+  personal: ['areas', 'daily', 'inbox', 'maps', 'notes', 'projects', 'sources'],
+  shared: ['areas', 'maps', 'notes', 'projects', 'sources'],
+};
+
 /** The manifest of a new personal brain for GitHub login `user`. */
 export function personalManifest(user: string): BrainManifest {
   return {
@@ -50,7 +56,7 @@ export function personalManifest(user: string): BrainManifest {
 
 /**
  * Every file of a new brain, brain-relative path → text, sorted: `brain.yaml`, `AGENTS.md`,
- * `CLAUDE.md`, `index.md` and, when shared, `CODEOWNERS`. The generated parts come from the
+ * `CLAUDE.md`, `index.md`, an empty `<folder>/.gitkeep` per folder of `BRAIN_FOLDERS` and, when shared, `CODEOWNERS`. The generated parts come from the
  * chunk 4 generators run on the empty brain, so a new brain passes `doctor` as it is.
  * It takes no version, so brain content cannot depend on the core version (ADR 0001).
  */
@@ -88,5 +94,6 @@ export function brainFiles(m: BrainManifest, templatesDir: string = packageCore(
   for (const generate of [agentsGenerator, mocGenerator, codeownersGenerator]) {
     for (const f of generate(ws, b, m).files) out.set(f.path.slice(b.dir.length + 1), f.next);
   }
+  for (const folder of BRAIN_FOLDERS[m.type]) out.set(`${folder}/.gitkeep`, '');
   return new Map([...out].sort(([x], [y]) => byString(x, y)));
 }
