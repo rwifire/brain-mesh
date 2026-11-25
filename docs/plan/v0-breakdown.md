@@ -149,3 +149,17 @@ Small fixes the chunk 6 final review raised and left open.
 - [ ] A missing `gh` or `git` on a non-English Windows is not recognised (the check matches cmd's English "is not recognized" text), and a missing `git` has no check at all; probe with `gh --version` / `git --version` instead.
 - [ ] `git` and `gh` can wait on a credential or pinentry prompt when an agent runs `commit --json`; set `GIT_TERMINAL_PROMPT=0` in `--json` mode or document it.
 - [ ] `commit` pushes every unpushed commit on the branch, not only personal ones; say how many commits were pushed.
+
+## Deferred minors from chunk 7
+
+From the [chunk 7 plan](../superpowers/plans/2026-11-25-chunk-07-personal-skills.md) final review.
+
+- [ ] `search`: `ß` and `ss` don't find each other in either direction; fold `ß` → `ss` on both query and text.
+- [ ] `search`: the title regex drops a trailing `#` that belongs to the text (`# Use C#` → "Use C"), and a fenced `# comment` can become the title.
+- [ ] npm `latest` stays on 0.1.0-alpha.0, whose ingest fails P3/P4; move `latest` to the newest alpha (`npm dist-tag add`) or deprecate alpha.0 and the `0.0.0-stage` placeholder.
+- [ ] `package-lock.json` still says name `brain-mesh`, version 0.0.0; refresh with `npm install --package-lock-only`.
+- [ ] `search` loads and `git status`-checks every brain even with `--brain`, and passes on warnings for brains it didn't search.
+- [ ] `search --brain ""` (or `,`) searches nothing without an error; make an empty list a usage error.
+- [ ] `npx brain-mesh-ai-workspace` run inside the brain-mesh repo itself resolves to the repo and fails; development checkout only.
+- [ ] The e2e packaging check covers `.claude/skills` only, not `.github/skills`.
+- [ ] After an ingest that only appends, a note's stale `summary` (e.g. "7-day TTL") still ranks as a `summary` hit; consider having ingest propose the summary change as its own item.
