@@ -163,3 +163,14 @@ From the [chunk 7 plan](../superpowers/plans/2026-11-25-chunk-07-personal-skills
 - [ ] `npx brain-mesh-ai-workspace` run inside the brain-mesh repo itself resolves to the repo and fails; development checkout only.
 - [ ] The e2e packaging check covers `.claude/skills` only, not `.github/skills`.
 - [ ] After an ingest that only appends, a note's stale `summary` (e.g. "7-day TTL") still ranks as a `summary` hit; consider having ingest propose the summary change as its own item.
+
+## Deferred minors from chunk 8
+
+From the [chunk 8 plan](../superpowers/plans/2026-11-25-chunk-08-host-adapter.md) final review.
+
+- [ ] Team-repo lookup answering 200 without a `permissions` body reads as `no-write` (a false `owner-no-write`); return `unknown` instead.
+- [ ] The HTTP status is read only from `(HTTP n)`; a bare `gh: HTTP 404` becomes `E_HOST` and skips every network check. Match `\bHTTP (\d{3})\b`.
+- [ ] `githubRepoOf` misses `https://user@github.com/…`, `ssh://git@github.com:22/…` and user-less scp `github.com:o/r.git`; SSH host aliases (`git@github.com-work:…`) get a misleading "not on github.com" warning.
+- [ ] With `gh` missing on non-English Windows, doctor's `W_NETWORK_SKIPPED` quotes cmd's localized text instead of "gh is not installed"; probe `gh --version` once before the first API call.
+- [ ] Outside collaborators can't see the org's teams, so every team owner gives `owner-not-found`; confirm in the sandbox run, then return `unknown`.
+- [ ] Owner lookups run one after another (about 0.3–0.5 s each); run them with a bounded `mapLimit`.
