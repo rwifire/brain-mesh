@@ -52,7 +52,7 @@ describe('core skills', () => {
     const root = await tempDir('bm skills ');
     await createWorkspace(root, { user: 'octo-user', pin: '0.4.2' });
     const text = await read(root, '.claude/skills/ask/SKILL.md');
-    expect(text).toContain('npx -y brain-mesh@0.4.2 search');
+    expect(text).toContain('npx -y brain-mesh-ai-workspace@0.4.2 search');
     expect(text).not.toContain('{{');
     for (const n of NAMES) expect(await read(root, `.github/skills/${n}/SKILL.md`)).not.toContain('{{');
   });

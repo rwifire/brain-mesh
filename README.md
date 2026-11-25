@@ -7,7 +7,7 @@ brain-mesh gives every user an AI workspace with a personal brain and mounted sh
 Needs Node 22.12 or newer, git, and the GitHub CLI (`gh`) logged in. In an empty folder:
 
 ```bash
-npx -y brain-mesh@next init
+npx -y brain-mesh-ai-workspace@next init
 ```
 
 This creates a private repo `ai-workspace` on your GitHub account and pushes the workspace to it. Open the folder in Claude Code and ask it to capture a thought, ingest an inbox item, or answer a question from your notes; the folder is also an Obsidian vault. The alpha covers the personal brain only.

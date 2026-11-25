@@ -40,7 +40,7 @@ describe('the package ships the templates', () => {
   it('renders a workspace from the installed package', async () => {
     const prefix = await tempDir('bm install-');
     await execa('npm', ['install', '--no-save', '--no-audit', '--no-fund', '--prefix', prefix, inject('tarball')]);
-    const pkg = join(prefix, 'node_modules', 'brain-mesh');
+    const pkg = join(prefix, 'node_modules', 'brain-mesh-ai-workspace');
     for (const p of [
       'templates/workspace/AGENTS.md',
       'templates/workspace/gitattributes',
@@ -52,7 +52,7 @@ describe('the package ships the templates', () => {
       await expect(access(join(pkg, ...p.split('/'))), p).resolves.toBeUndefined();
     }
     const mod = (await import(
-      pathToFileURL(join(prefix, 'node_modules', 'brain-mesh', 'dist', 'render', 'workspace.js')).href
+      pathToFileURL(join(prefix, 'node_modules', 'brain-mesh-ai-workspace', 'dist', 'render', 'workspace.js')).href
     )) as typeof import('../../src/render/workspace.js');
     const root = await fullWorkspace();
     const r = await mod.renderWorkspace(root);
@@ -66,13 +66,13 @@ describe('the package ships the templates', () => {
     const prefix = await tempDir('bm install-');
     await execa('npm', ['install', '--no-save', '--no-audit', '--no-fund', '--prefix', prefix, inject('tarball')]);
     const create = (await import(
-      pathToFileURL(join(prefix, 'node_modules', 'brain-mesh', 'dist', 'workspace', 'create.js')).href
+      pathToFileURL(join(prefix, 'node_modules', 'brain-mesh-ai-workspace', 'dist', 'workspace', 'create.js')).href
     )) as typeof import('../../src/workspace/create.js');
     const root = await tempDir('bm ws-');
     await create.createWorkspace(root, { user: 'octo-user', pin: PKG_VERSION });
     for (const name of ['capture', 'ingest', 'ask']) {
       const text = await readFile(join(root, '.claude', 'skills', name, 'SKILL.md'), 'utf8');
-      expect(text, name).toContain(`npx -y brain-mesh@${PKG_VERSION} `);
+      expect(text, name).toContain(`npx -y brain-mesh-ai-workspace@${PKG_VERSION} `);
     }
   });
 });

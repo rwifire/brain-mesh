@@ -72,7 +72,7 @@ describe('renderWorkspace', () => {
   it('pinned cli', async () => {
     const root = await fullWorkspace();
     await render(root);
-    expect(await read(root, '.claude/skills/ask/SKILL.md')).toContain('npx -y brain-mesh@0.4.2 search');
+    expect(await read(root, '.claude/skills/ask/SKILL.md')).toContain('npx -y brain-mesh-ai-workspace@0.4.2 search');
     expect(await read(root, '.mesh/skills/ask/SKILL.md')).toContain('{{cli}} search');
   });
 
@@ -135,7 +135,7 @@ describe('renderWorkspace', () => {
     expect(await exists(root, '.claude/skills/ask/scripts/helper.sh')).toBe(false);
     await removePath(root, '.local/skills/ask');
     const r = await render(root);
-    expect(await read(root, '.claude/skills/ask/SKILL.md')).toContain('npx -y brain-mesh@0.4.2 search');
+    expect(await read(root, '.claude/skills/ask/SKILL.md')).toContain('npx -y brain-mesh-ai-workspace@0.4.2 search');
     expect(r.written).toContain('.claude/skills/ask/scripts/helper.sh');
     expect((await readdir(join(root, '.claude', 'skills', 'ask'))).sort()).toEqual(['SKILL.md', 'scripts']);
   });

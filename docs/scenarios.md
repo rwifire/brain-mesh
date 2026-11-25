@@ -12,10 +12,10 @@ Use a published version (`<version>`, e.g. `0.1.0-alpha.0`) and an empty folder 
 base="$(mktemp -d)/scenario run"; mkdir -p "$base/workspace"
 git init --bare -q -b main "$base/remote.git"
 cd "$base/workspace"
-npx -y brain-mesh@<version> init --remote "$base/remote.git" --json
+npx -y brain-mesh-ai-workspace@<version> init --remote "$base/remote.git" --json
 cp -r <brain-mesh repo>/test/fixtures/scenarios/personal/. brains/personal/
-npx -y brain-mesh@<version> doctor personal --fix --json      # expect "errors":0
-npx -y brain-mesh@<version> commit -m "Seed scenario notes" --json
+npx -y brain-mesh-ai-workspace@<version> doctor personal --fix --json      # expect "errors":0
+npx -y brain-mesh-ai-workspace@<version> commit -m "Seed scenario notes" --json
 ```
 
 The seed brain has an area `ci` (runner cache note, flaky-test decision), `notes/obsidian-setup.md`, and the raw transcript `inbox/2026-11-20-platform-sync-transcript.md`.
@@ -23,7 +23,7 @@ The seed brain has an area `ci` (runner cache note, flaky-test decision), `notes
 Run every scenario from the workspace root with Claude Code in print mode:
 
 ```bash
-claude -p "<prompt>" --allowedTools "Read Write Edit Glob Grep Bash(npx -y brain-mesh@<version>:*) Bash(rm:*) Bash(mv:*) Bash(ls:*)"
+claude -p "<prompt>" --allowedTools "Read Write Edit Glob Grep Bash(npx -y brain-mesh-ai-workspace@<version>:*) Bash(rm:*) Bash(mv:*) Bash(ls:*)"
 ```
 
 A scenario that needs approval runs twice: first the prompt (the proposal), then `claude -p --continue "Approved, go ahead." --allowedTools "…"` with the same tools.
@@ -64,7 +64,7 @@ After each scenario, check the result with `git -C "$base/workspace" log --stat 
 - After approval:
   - the runner cache note says 3 days and its `updated` is today;
   - new notes have `type`, `summary` and `updated`, kebab-case names, and a *Related* section;
-  - `npx -y brain-mesh@<version> doctor --json` reports `"errors":0`;
+  - `npx -y brain-mesh-ai-workspace@<version> doctor --json` reports `"errors":0`;
   - the inbox file is gone;
   - there is one commit whose message says why, and it is pushed.
 - Nothing outside `brains/personal/` changed.

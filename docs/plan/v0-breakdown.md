@@ -97,7 +97,7 @@ Spec ([spec.md](../spec.md)) and glossary:
 - [ ] Fix the workspace tree comment that says whole client subfolders are gitignored.
 - [ ] 12: add the open question of what happens to a user-namespace workspace repo when an EMU account is deprovisioned.
 - [ ] 4.1: note that personal skills in `~/.claude/skills/` override workspace skills with the same name.
-- [ ] Decide whether Claude skills pre-approve a scoped `Bash(npx -y brain-mesh@<pin>:*)` instead of no shell approval.
+- [ ] Decide whether Claude skills pre-approve a scoped `Bash(npx -y brain-mesh-ai-workspace@<pin>:*)` instead of no shell approval.
 
 ## Deferred minors from chunk 2
 

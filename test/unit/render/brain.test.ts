@@ -23,7 +23,7 @@ describe('manifestYaml', () => {
   it('shared manifest', () => {
     const text = manifestYaml(SRE);
     expect(text).toBe(
-      '# yaml-language-server: $schema=https://unpkg.com/brain-mesh/schemas/brain.schema.json\n' +
+      '# yaml-language-server: $schema=https://unpkg.com/brain-mesh-ai-workspace/schemas/brain.schema.json\n' +
         'id: brain-sre\nname: SRE\ntype: shared\ndescription: "Reliability: on-call, incidents."\n' +
         'topics: [oncall, incidents]\nschema: 1\nowner: "@acme/sre"\npolicies:\n  people: accountability\n',
     );

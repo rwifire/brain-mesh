@@ -18,6 +18,6 @@ const repoRoot = fileURLToPath(new URL('../..', import.meta.url));
 export default async function setup(project: TestProject): Promise<() => Promise<void>> {
   const dir = await mkdtemp(join(tmpdir(), 'bm pack-'));
   await execa('npm', ['pack', '--pack-destination', dir], { cwd: repoRoot });
-  project.provide('tarball', join(dir, `brain-mesh-${PKG_VERSION}.tgz`));
+  project.provide('tarball', join(dir, `brain-mesh-ai-workspace-${PKG_VERSION}.tgz`));
   return () => rm(dir, { recursive: true, force: true, maxRetries: 5 });
 }
