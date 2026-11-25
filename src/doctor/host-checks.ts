@@ -67,6 +67,8 @@ export async function hostChecks(
             message: `you have ${permission} access to ${full}; contribute needs write: ask the owner for write access or mount it as read`,
           }),
         );
+        // Without write access GitHub hides who can write, so owner lookups would only give false findings.
+        continue;
       }
       for (const [path, owner] of ownersOf(b)) {
         const key = `${owner}|${full}`;

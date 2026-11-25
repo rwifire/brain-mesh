@@ -44,9 +44,9 @@ describe('githubHost', () => {
   });
 
   it('login probes gh --version first', async () => {
-    const run = stub({ '--version': ok('gh version 2.100.0'), 'auth status': ok(), 'api user --jq .login': ok('octo-user\n') });
+    const run = stub({ '--version': ok('gh version 2.100.0'), 'auth status --hostname github.com': ok(), 'api user --jq .login': ok('octo-user\n') });
     expect(await githubHost(run).login()).toBe('octo-user');
-    expect(run.calls).toEqual([['--version'], ['auth', 'status'], ['api', 'user', '--jq', '.login']]);
+    expect(run.calls).toEqual([['--version'], ['auth', 'status', '--hostname', 'github.com'], ['api', 'user', '--jq', '.login']]);
   });
 
   it('a failing gh --version gives E_GH_MISSING', async () => {
@@ -55,7 +55,7 @@ describe('githubHost', () => {
   });
 
   it('login offline gives E_OFFLINE, not E_GH_AUTH', async () => {
-    const run = stub({ '--version': ok(), 'auth status': fail('X Failed to log in to github.com: error connecting to api.github.com') });
+    const run = stub({ '--version': ok(), 'auth status --hostname github.com': fail('X Failed to log in to github.com: error connecting to api.github.com') });
     await expect(githubHost(run).login()).rejects.toMatchObject({ code: 'E_OFFLINE', message: expect.stringContaining('--offline') });
   });
 
@@ -64,11 +64,11 @@ describe('githubHost', () => {
     const status = fail('github.com\n  X Failed to log in to github.com using token (GH_TOKEN)\n  - The token in GH_TOKEN is invalid.');
     const offline = stub({
       '--version': ok(),
-      'auth status': status,
+      'auth status --hostname github.com': status,
       'api user --jq .login': fail('Get "https://api.github.com/user": proxyconnect tcp: dial tcp 127.0.0.1:9: connectex: No connection could be made'),
     });
     await expect(githubHost(offline).login()).rejects.toMatchObject({ code: 'E_OFFLINE' });
-    const invalid = stub({ '--version': ok(), 'auth status': status, 'api user --jq .login': fail('gh: Bad credentials (HTTP 401)') });
+    const invalid = stub({ '--version': ok(), 'auth status --hostname github.com': status, 'api user --jq .login': fail('gh: Bad credentials (HTTP 401)') });
     await expect(githubHost(invalid).login()).rejects.toMatchObject({ code: 'E_GH_AUTH' });
   });
 
@@ -80,7 +80,7 @@ describe('githubHost', () => {
   it('logged out gives E_GH_AUTH', async () => {
     const run = stub({
       '--version': ok(),
-      'auth status': fail('You are not logged into any GitHub hosts. To log in, run: gh auth login'),
+      'auth status --hostname github.com': fail('You are not logged into any GitHub hosts. To log in, run: gh auth login'),
       'api user --jq .login': { exitCode: 4, stdout: '', stderr: 'To get started with GitHub CLI, please run:  gh auth login' },
     });
     await expect(githubHost(run).login()).rejects.toMatchObject({ code: 'E_GH_AUTH', message: expect.stringContaining('gh auth login') });

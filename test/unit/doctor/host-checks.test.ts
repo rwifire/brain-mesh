@@ -43,6 +43,16 @@ describe('hostChecks', () => {
     }
   });
 
+  it('without write access, owners are not looked up', async () => {
+    const owners = { [`@acme/platform|${REPO}`]: 'no-write' as const, [`@acme/ci-team|${REPO}`]: 'no-write' as const };
+    for (const p of ['none', 'read'] as const) {
+      const host = fakeHost({ permissions: { [REPO]: p }, owners });
+      const r = await hostChecks(await ws(), host, { offline: false });
+      expect(codes(r), p).toEqual(['push-rights-missing']);
+      expect(host.calls, p).toEqual([`permission ${REPO}`]);
+    }
+  });
+
   it('owners', async () => {
     const tree = { 'brains/brain-team-platform/areas/ghost/README.md': area('@acme/ghost') };
     const at = 'brains/brain-team-platform/areas/ghost/README.md';
@@ -84,7 +94,9 @@ describe('hostChecks', () => {
   it('a failure on a later call drops all network findings', async () => {
     for (const code of ['E_OFFLINE', 'E_GH_AUTH']) {
       const failWith = new CliError(code, `boom ${code}`);
-      const r = await hostChecks(await ws(), fakeHost({ permissions: { [REPO]: 'read' }, failWith, failAfter: 1 }), { offline: false });
+      // call 1: permission (write), call 2: @acme/platform (a no-write finding), call 3 fails
+      const owners = { [`@acme/platform|${REPO}`]: 'no-write' as const };
+      const r = await hostChecks(await ws(), fakeHost({ owners, failWith, failAfter: 2 }), { offline: false });
       expect(r.findings, code).toEqual([]);
       expect(warnings(r), code).toEqual(['W_NETWORK_SKIPPED']);
       expect(r.warnings[0]!.message).toContain(`boom ${code}`);

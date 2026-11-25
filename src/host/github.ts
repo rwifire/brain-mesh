@@ -38,7 +38,8 @@ const runGh: GhRunner = async (args, opts = {}) => {
   const r = await execa('gh', args, {
     reject: false,
     stripFinalNewline: true,
-    env: { GH_PROMPT_DISABLED: '1', GH_NO_UPDATE_NOTIFIER: '1' },
+    // GH_HOST pins every call to github.com, the only supported host (spec 9.4), whatever host gh defaults to.
+    env: { GH_HOST: 'github.com', GH_PROMPT_DISABLED: '1', GH_NO_UPDATE_NOTIFIER: '1' },
     ...(opts.input === undefined ? {} : { input: opts.input }),
   });
   if (notFound(r.exitCode, String(r.stderr))) throw new CliError(ErrorCode.GhMissing, 'gh is not installed; see https://cli.github.com');
@@ -118,7 +119,7 @@ export function githubHost(run: GhRunner = runGh): Host {
       if ((await run(['--version'])).exitCode !== 0) {
         throw new CliError(ErrorCode.GhMissing, 'gh is not installed; see https://cli.github.com');
       }
-      const status = await run(['auth', 'status']);
+      const status = await run(['auth', 'status', '--hostname', 'github.com']);
       if (status.exitCode !== 0) {
         if (ghFailure(status) === 'offline') throw offlineError(status);
         // Offline, gh 2.100 only says the token is invalid; one API call tells the two apart.
