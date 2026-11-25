@@ -1,7 +1,7 @@
 import { execa } from 'execa';
 import type { RunResult } from '../git.js';
 import { CliError, ErrorCode } from '../output.js';
-import type { Host } from './host.js';
+import type { Host, OwnerStatus, Permission, RepoRef } from './host.js';
 
 /** Runs `gh` with `args` (and `input` on stdin); throws `E_GH_MISSING` when gh cannot be started. */
 export type GhRunner = (args: readonly string[], opts?: { input?: string }) => Promise<RunResult>;
@@ -45,6 +45,37 @@ const runGh: GhRunner = async (args, opts = {}) => {
   return { exitCode: r.exitCode ?? 1, stdout: String(r.stdout), stderr: String(r.stderr) };
 };
 
+const REPO_URL = [
+  /^https?:\/\/github\.com\/([^/\s]+)\/([^/\s]+?)(?:\.git)?\/?$/i,
+  /^ssh:\/\/git@github\.com\/([^/\s]+)\/([^/\s]+?)(?:\.git)?\/?$/i,
+  /^git@github\.com:([^/\s]+)\/([^/\s]+?)(?:\.git)?\/?$/i,
+];
+
+/** The github.com repo a clone URL names; null for other hosts, local paths and incomplete URLs. */
+export function githubRepoOf(url: string): RepoRef | null {
+  for (const re of REPO_URL) {
+    const m = re.exec(url.trim());
+    if (m !== null) return { owner: m[1]!, name: m[2]! };
+  }
+  return null;
+}
+
+const ROLES: readonly [string, Permission][] = [
+  ['admin', 'admin'],
+  ['maintain', 'maintain'],
+  ['push', 'write'],
+  ['triage', 'triage'],
+  ['pull', 'read'],
+];
+const permissionsOf = (json: unknown): Record<string, unknown> => {
+  const p = (json as { permissions?: unknown } | null)?.permissions;
+  return typeof p === 'object' && p !== null ? (p as Record<string, unknown>) : {};
+};
+const canWrite = (json: unknown) => {
+  const p = permissionsOf(json);
+  return p.admin === true || p.maintain === true || p.push === true;
+};
+
 /** The github.com host through an installed, logged-in `gh` (spec 3). */
 export function githubHost(run: GhRunner = runGh): Host {
   /**
@@ -74,7 +105,13 @@ export function githubHost(run: GhRunner = runGh): Host {
     if (m !== null) return { status: Number(m[1]), json: json() };
     throw new CliError(ErrorCode.Host, `gh api ${path} failed: ${firstLine(r.stderr || r.stdout)}`);
   }
-  void api;
+
+  /** A 404 on the access lookup: the owner itself missing, or present without access. */
+  async function existsOr404(path: string): Promise<OwnerStatus> {
+    const r = await api(path);
+    if (r.status === 200) return 'no-write';
+    return r.status === 404 ? 'not-found' : 'unknown';
+  }
 
   return {
     async login() {
@@ -116,6 +153,45 @@ export function githubHost(run: GhRunner = runGh): Host {
       const [, owner, repo] = m;
       const protocol = (await run(['config', 'get', 'git_protocol'])).stdout.trim();
       return protocol === 'ssh' ? `git@github.com:${owner}/${repo}.git` : `https://github.com/${owner}/${repo}.git`;
+    },
+
+    repoOf: githubRepoOf,
+
+    async permission(repo) {
+      const r = await api(`repos/${repo.owner}/${repo.name}`);
+      if (r.status === 404) return 'none';
+      if (r.status !== 200) throw new CliError(ErrorCode.Host, `could not read your access to ${repo.owner}/${repo.name} (HTTP ${r.status})`);
+      const p = permissionsOf(r.json);
+      return ROLES.find(([flag]) => p[flag] === true)?.[1] ?? 'none';
+    },
+
+    async ownerStatus(owner, repo) {
+      const full = `${repo.owner}/${repo.name}`;
+      const team = /^@([^/]+)\/(.+)$/.exec(owner);
+      if (team !== null) {
+        // Slugs are lowercase; CODEOWNERS matches teams case-insensitively (plan decision 5).
+        const [org, slug] = [team[1]!, team[2]!.toLowerCase()];
+        const r = await api(`orgs/${org}/teams/${slug}/repos/${full}`, { accept: 'application/vnd.github.v3.repository+json' });
+        if (r.status === 200) return canWrite(r.json) ? 'ok' : 'no-write';
+        return r.status === 404 ? existsOr404(`orgs/${org}/teams/${slug}`) : 'unknown';
+      }
+      const login = owner.replace(/^@/, '');
+      const r = await api(`repos/${full}/collaborators/${login}/permission`);
+      if (r.status === 200) {
+        const j = (r.json ?? {}) as { permission?: unknown; role_name?: unknown };
+        const write = ['admin', 'maintain', 'write'].includes(String(j.role_name)) || ['admin', 'write'].includes(String(j.permission));
+        return write ? 'ok' : 'no-write';
+      }
+      return r.status === 404 ? existsOr404(`users/${login}`) : 'unknown';
+    },
+
+    async createPullRequest(pr) {
+      const full = `${pr.repo.owner}/${pr.repo.name}`;
+      const r = await api(`repos/${full}/pulls`, { method: 'POST', body: { title: pr.title, head: pr.head, base: pr.base, body: pr.body } });
+      const j = (r.json ?? {}) as { number?: unknown; html_url?: unknown; message?: unknown; errors?: { message?: unknown }[] };
+      if (r.status === 200 && typeof j.number === 'number' && typeof j.html_url === 'string') return { number: j.number, url: j.html_url };
+      const reason = j.errors?.map((e) => e.message).filter((m) => typeof m === 'string').join('; ') || String(j.message ?? `HTTP ${r.status}`);
+      throw new CliError(ErrorCode.PrCreate, `could not open a pull request on ${full} from ${pr.head}: ${reason}`);
     },
   };
 }
