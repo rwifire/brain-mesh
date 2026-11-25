@@ -114,3 +114,7 @@ After each scenario, check the result with `git -C "$base/workspace" log --stat 
 | 2026-11-25 | 0.1.0-alpha.0 | P6 | pass | Named `@rwifire` as the owner. |
 | 2026-11-25 | 0.1.0-alpha.1 | P3 | pass | Ingest now deletes with `rm`; the deletion is in the one pushed commit; doctor 0 errors. |
 | 2026-11-25 | 0.1.0-alpha.1 | P4 | pass | Moved with `mv` into `sources/` (a git rename) with `type: source`; doctor 0 errors; pushed. |
+| 2026-11-25 | 0.1.0-alpha.2 | P3 | pass | After the final-review fixes (word-start search, delete before doctor): four groups, 7 timestamped quotes; `rm`, doctor 0 errors, one pushed commit. |
+| 2026-11-25 | 0.1.0-alpha.2 | P4 | pass | Moved into `sources/` with `type: source`; doctor 0 errors; pushed. |
+| 2026-11-25 | 0.1.0-alpha.2 | P5 | pass | Answered 3 days from the inbox decision, with the filed note's 7 days beside it; no change. |
+| 2026-11-25 | 0.1.0-alpha.2 | P6 | pass | Retried the search with fewer words, named `@rwifire`; no change. |
