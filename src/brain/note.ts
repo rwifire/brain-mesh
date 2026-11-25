@@ -8,7 +8,8 @@ export interface ParsedNote {
   links: Link[];
 }
 
-export function parseNote(text: string): ParsedNote {
+/** `links: false` skips the markdown parse (links come back empty); `search` needs no links. */
+export function parseNote(text: string, o: { links?: boolean } = {}): ParsedNote {
   const split = splitFrontmatter(text);
   let frontmatter: Record<string, unknown> | null = null;
   let frontmatterError: string | null = null;
@@ -20,6 +21,7 @@ export function parseNote(text: string): ParsedNote {
     frontmatterError = parsed.error;
   }
   const offset = split.bodyStartLine - 1;
+  if (o.links === false) return { frontmatter, frontmatterError, links: [] };
   const links = extractLinks(split.body).map((l) => ({ url: l.url, line: l.line + offset }));
   return { frontmatter, frontmatterError, links };
 }

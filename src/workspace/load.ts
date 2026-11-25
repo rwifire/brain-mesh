@@ -64,9 +64,11 @@ export interface WorkspaceModel {
 export interface LoadDeps {
   isDirty(dir: string): Promise<boolean>;
   readText(path: string): Promise<string>;
+  /** False skips link extraction (every `NoteModel.links` is empty); for `search`, which needs none. */
+  parseLinks: boolean;
 }
 
-const defaultDeps: LoadDeps = { isDirty: gitIsDirty, readText: (path) => readFile(path, 'utf8') };
+const defaultDeps: LoadDeps = { isDirty: gitIsDirty, readText: (path) => readFile(path, 'utf8'), parseLinks: true };
 
 const byString = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
@@ -209,7 +211,7 @@ export async function loadWorkspace(root: string, overrides: Partial<LoadDeps> =
         warnings.push({ code: 'W_FILE_UNREADABLE', message: `could not read brains/${id}/${path}: ${reason}` });
         continue;
       }
-      notes.push({ path, text, ...parseNote(text) });
+      notes.push({ path, text, ...parseNote(text, { links: deps.parseLinks }) });
     }
 
     const shebangs: string[] = [];
