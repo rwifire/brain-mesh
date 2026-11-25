@@ -41,11 +41,13 @@ export function queryTerms(query: string): string[] {
     .filter((t) => t !== '');
 }
 
-function count(haystack: string, term: string): number {
-  let n = 0;
-  for (let i = haystack.indexOf(term); i !== -1; i = haystack.indexOf(term, i + term.length)) n++;
-  return n;
-}
+/** Matches `term` at the start of a word, so `ci` finds "CI/CD" but not "decision" (terms are letters and digits only). */
+const wordStart = (term: string) => new RegExp(`(?<![\\p{L}\\p{N}])${term}`, 'gu');
+const has = (haystack: string, re: RegExp) => {
+  re.lastIndex = 0;
+  return re.test(haystack);
+};
+const count = (haystack: string, re: RegExp) => haystack.match(re)?.length ?? 0;
 
 /** Notes `search` reads: not the brain's AGENTS.md/CLAUDE.md, nothing under a dot folder. */
 function searchable(path: string): boolean {
@@ -53,7 +55,7 @@ function searchable(path: string): boolean {
   return !path.split('/').some((seg) => seg.startsWith('.'));
 }
 
-function score(brain: BrainModel, n: NoteModel, terms: string[]): SearchHit | null {
+function score(brain: BrainModel, n: NoteModel, terms: RegExp[]): SearchHit | null {
   const split = splitFrontmatter(n.text);
   const body = split.body.replace(BLOCK, (m) => '\n'.repeat(m.split('\n').length - 1));
   const heading = /^#[ \t]+(.+?)[ \t]*#*[ \t]*$/m.exec(body);
@@ -65,8 +67,8 @@ function score(brain: BrainModel, n: NoteModel, terms: string[]): SearchHit | nu
 
   const head = norm(`${title}\n${summary ?? ''}`);
   const lowBody = norm(body);
-  if (!terms.every((t) => head.includes(t) || lowBody.includes(t))) return null;
-  const match = terms.every((t) => head.includes(t)) ? 'summary' : 'text';
+  if (!terms.every((t) => has(head, t) || has(lowBody, t))) return null;
+  const match = terms.every((t) => has(head, t)) ? 'summary' : 'text';
   const hits = terms.reduce((sum, t) => sum + count(head, t) + count(lowBody, t), 0);
 
   let line: number | null = null;
@@ -74,7 +76,7 @@ function score(brain: BrainModel, n: NoteModel, terms: string[]): SearchHit | nu
   const lines = body.split('\n');
   for (let i = 0; i < lines.length; i++) {
     const l = norm(lines[i]!);
-    if (terms.some((t) => l.includes(t))) {
+    if (terms.some((t) => has(l, t))) {
       line = split.bodyStartLine + i;
       snippet = lines[i]!.trim().slice(0, SNIPPET_MAX);
       break;
@@ -111,11 +113,12 @@ export function searchWorkspace(
   }
 
   const order = new Map(brains.map((b, i) => [b.id, i]));
+  const patterns = terms.map(wordStart);
   const all: SearchHit[] = [];
   for (const b of brains) {
     for (const n of b.notes) {
       if (!searchable(n.path)) continue;
-      const hit = score(b, n, terms);
+      const hit = score(b, n, patterns);
       if (hit !== null) all.push(hit);
     }
   }

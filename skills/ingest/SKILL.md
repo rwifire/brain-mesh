@@ -19,7 +19,7 @@ Propose first, write only what the user approves. Append by default: replace or 
 
 ## 3. Find related notes
 
-Run one search with the input's key terms:
+Search with the input's key terms. Every word must occur in a note (at the start of a word), so use 2–4 distinctive words; if nothing comes back, search once more with fewer.
 
 `{{cli}} search "<key terms>" --brain personal --json`
 
@@ -48,11 +48,11 @@ Placement and format:
 
 Then, in this order:
 
-1. Check and regenerate the brain's generated lists in one call, and fix anything it still reports:
+1. Delete the inbox item as a plain file with `rm <path>` in a POSIX shell (Git Bash on Windows; `Remove-Item` only where no POSIX shell exists), not `git rm`: the commit below stages the deletion. If the user wants to keep it, move it with `mv <path> <target>` to `brains/personal/sources/<slug>.md` instead and give it frontmatter `type: source`, a one-sentence `summary` and `updated`; links from the new notes point to that path. If the shell refuses, ask the user to approve or delete the file before you go on.
+2. Check the result and regenerate the brain's generated lists in one call, and fix anything it still reports (a broken link to the removed inbox item, for one):
 
    `{{cli}} doctor personal --fix --json`
 
-2. Delete the inbox item as a plain file with `rm <path>` in a POSIX shell (Git Bash on Windows; `Remove-Item` only where no POSIX shell exists), not `git rm`: the commit in the next step stages the deletion. If the user wants to keep it, move it with `mv <path> <target>` to `brains/personal/sources/<slug>.md` instead and give it frontmatter `type: source`, a one-sentence `summary` and `updated`. If the shell refuses, ask the user to approve or delete the file, then commit.
 3. Commit everything in one call, with a message that says *why* the notes changed (e.g. "Ingest platform sync: runner cache decision, flaky-test question"):
 
    `{{cli}} commit -m "<why>" --json`

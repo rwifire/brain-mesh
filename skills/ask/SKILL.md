@@ -17,7 +17,7 @@ Read each candidate's `index.md`, then the area READMEs and maps that match the 
 
 ## 3. Search
 
-Run one search over the candidates:
+Search the candidates. Every word must occur in a note (at the start of a word), so use 2–4 distinctive words; if nothing comes back, search once more with fewer.
 
 `{{cli}} search "<the question's key words>" --brain <id1,id2> --json`
 

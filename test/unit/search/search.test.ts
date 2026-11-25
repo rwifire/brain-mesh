@@ -32,6 +32,20 @@ describe('searchWorkspace', () => {
     ]);
   });
 
+  it('terms match at the start of a word, not inside one', async () => {
+    const w = await ws({
+      'brains/personal/notes/ci-pipeline.md': note('Our CI/CD pipeline and its runners', '# CI pipeline\n\nShort.\n'),
+      'brains/personal/notes/decisions.md': note(
+        'Specific decisions about pricing and policies',
+        '# Decisions\n\nSpecific decisions, social policies, pricing decisions, precise specifics.\n',
+      ),
+    });
+    const ci = paths(searchWorkspace(w, 'CI'));
+    expect(ci[0]).toBe('brains/personal/notes/ci-pipeline.md');
+    expect(ci).not.toContain('brains/personal/notes/decisions.md');
+    expect(paths(searchWorkspace(w, 'runner'))).toContain('brains/personal/notes/ci-pipeline.md');
+  });
+
   it('more hits rank higher within a tier', async () => {
     const w = await ws({
       'brains/personal/notes/zeta-a.md': note('x', '# A\n\nzebracache once\n'),
