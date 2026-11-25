@@ -6,7 +6,7 @@ import { packageCore, type CoreSource } from '../render/core.js';
 import { renderWorkspace } from '../render/workspace.js';
 
 /** Unversioned, so the user-owned `mesh.yaml` never needs rewriting on upgrade (plan Ruling 9). */
-export const MESH_SCHEMA_URL = 'https://unpkg.com/brain-mesh/schemas/mesh.schema.json';
+export const MESH_SCHEMA_URL = 'https://unpkg.com/brain-mesh-ai-workspace/schemas/mesh.schema.json';
 
 const TOOLS = ['package.json', 'tsconfig.json', 'README.md'];
 const byString = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);

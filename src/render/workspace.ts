@@ -72,7 +72,7 @@ export function planWorkspace(
   local: { skills: SkillSource[]; agents: AgentSource[]; instructions: LocalInstruction[] },
 ): RenderEntry[] {
   if (ws.mesh === null) throw new Error('planWorkspace needs a valid mesh.yaml');
-  const cli = `npx -y brain-mesh@${ws.mesh.brain_mesh}`;
+  const cli = `npx -y brain-mesh-ai-workspace@${ws.mesh.brain_mesh}`;
   const out: RenderEntry[] = [];
   const managed = (path: string, content: Buffer, group?: string, bytes = false) => {
     const e: RenderEntry = { path, kind: 'managed', content };

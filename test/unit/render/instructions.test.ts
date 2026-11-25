@@ -7,7 +7,7 @@ import { loadWorkspace } from '../../../src/workspace/load.js';
 import { read, write } from '../../helpers/cli.js';
 import { fullWorkspace, removePath } from '../../helpers/workspace.js';
 
-const CLI = 'npx -y brain-mesh@0.4.2';
+const CLI = 'npx -y brain-mesh-ai-workspace@0.4.2';
 const template = () => readFile(join(packageCore().templatesDir, 'workspace', 'AGENTS.md'), 'utf8');
 const render = async (root: string, local = [] as { name: string; text: string }[]) =>
   workspaceAgentsMd(await template(), await loadWorkspace(root), CLI, local);
@@ -37,7 +37,7 @@ describe('workspaceAgentsMd', () => {
 
   it('cli filled', async () => {
     const text = await render(await fullWorkspace());
-    expect(text).toContain('`npx -y brain-mesh@0.4.2 doctor --fix --json`');
+    expect(text).toContain('`npx -y brain-mesh-ai-workspace@0.4.2 doctor --fix --json`');
     expect(text).not.toContain('{{');
   });
 

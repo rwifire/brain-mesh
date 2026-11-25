@@ -1,6 +1,6 @@
 {
-  "name": "brain-mesh",
-  "version": "0.0.0",
+  "name": "brain-mesh-ai-workspace",
+  "version": "0.1.0-alpha.2",
   "description": "Personal and shared AI brains as markdown in git.",
   "license": "Apache-2.0",
   "type": "module",

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { main, type CommandDef } from '../../src/main.js';
 import { CliError } from '../../src/output.js';
 import { captureIo } from '../helpers/io.js';
+import { PKG_VERSION } from '../helpers/version.js';
 
 const run = async (argv: string[], commands?: CommandDef[]) => {
   const io = captureIo();
@@ -13,7 +14,7 @@ const envelope = (out: string) => {
   expect(out.trimEnd().includes('\n')).toBe(false);
   return JSON.parse(out);
 };
-const versionData = { version: '0.0.0', node: process.version, platform: process.platform };
+const versionData = { version: PKG_VERSION, node: process.version, platform: process.platform };
 
 describe('main', () => {
   it("a command's exitCode is returned with an ok envelope", async () => {
@@ -37,7 +38,7 @@ describe('main', () => {
 
   it('version without --json prints text', async () => {
     const r = await run(['version']);
-    expect(r).toEqual({ code: 0, out: 'brain-mesh 0.0.0\n', err: '' });
+    expect(r).toEqual({ code: 0, out: `brain-mesh ${PKG_VERSION}\n`, err: '' });
   });
 
   it('unknown command in json mode is a usage envelope', async () => {

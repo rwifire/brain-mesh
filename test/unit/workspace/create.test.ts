@@ -18,7 +18,7 @@ const create = async () => {
 describe('createWorkspace', () => {
   it('mesh.yaml', () =>
     expect(meshYaml('octo-user', '0.4.2')).toBe(
-      '# yaml-language-server: $schema=https://unpkg.com/brain-mesh/schemas/mesh.schema.json\nversion: 1\nbrain_mesh: 0.4.2\nuser: octo-user\nmounts: []\n',
+      '# yaml-language-server: $schema=https://unpkg.com/brain-mesh-ai-workspace/schemas/mesh.schema.json\nversion: 1\nbrain_mesh: 0.4.2\nuser: octo-user\nmounts: []\n',
     ));
 
   it('a new workspace passes doctor', async () => {

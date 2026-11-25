@@ -7,7 +7,7 @@ import { parse } from 'yaml';
 import { FIXTURES_DIR } from '../../helpers/fixtures.js';
 
 const CORE = join(FIXTURES_DIR, 'core');
-const CLI = 'npx -y brain-mesh@1.2.3';
+const CLI = 'npx -y brain-mesh-ai-workspace@1.2.3';
 
 describe('fill', () => {
   it('replaces {{cli}} only', () => expect(fill('a {{cli}} {{date}} {{cli}}', CLI)).toBe(`a ${CLI} {{date}} ${CLI}`));

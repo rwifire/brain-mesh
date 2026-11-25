@@ -62,7 +62,7 @@ A workspace holds tooling and the personal brain; a shared brain holds knowledge
 
 **One core, upgraded by everyone.** There is a single template that keeps evolving. New skills, tools and template features ship as new core versions and reach users through `upgrade`. A per-company preset layer is parked (10).
 
-**Versioning.** Semver on the core. Each workspace pins its core version in `mesh.yaml`; generated instructions and skills invoke the CLI as `npx -y brain-mesh@<pinned>`, so there is no global install and no accidental upgrade. `brain-mesh upgrade` bumps the pin and re-renders managed files (4). `brain.yaml` records the brain `schema`; `doctor` warns when a mounted brain needs a newer core. Everything brain-mesh generates inside a brain depends only on the brain's `schema`, never on the core version (ADR [0001](adr/0001-generated-moc-lists-travel-in-each-pr.md)).
+**Versioning.** Semver on the core. Each workspace pins its core version in `mesh.yaml`; generated instructions and skills invoke the CLI as `npx -y brain-mesh-ai-workspace@<pinned>`, so there is no global install and no accidental upgrade. `brain-mesh upgrade` bumps the pin and re-renders managed files (4). `brain.yaml` records the brain `schema`; `doctor` warns when a mounted brain needs a newer core. Everything brain-mesh generates inside a brain depends only on the brain's `schema`, never on the core version (ADR [0001](adr/0001-generated-moc-lists-travel-in-each-pr.md)).
 
 **Requirements.** Node 22 LTS or newer, git, and an installed and logged-in GitHub CLI (`gh`). The CLI checks `gh auth status` first, then uses `gh` for API calls; the default `gh auth login` scopes (`repo`, `read:org`) are enough. Git transport uses the user's existing git setup. The enterprise must allow managed users to own repos in their namespace (no "Block the creation of user namespace repositories"); if it doesn't, `init` says so and asks for `--remote <url>`. Libraries: `commander`, `zod`, `yaml`, `mdast-util-from-markdown`, `execa` (see [chunk 1 research](research/2026-11-chunk-01-research.md)).
 
@@ -439,14 +439,14 @@ Verified against current client docs in [chunk 1 research](research/2026-11-chun
 | Brain rules | `brains/<id>/AGENTS.md` | via the brain's generated `CLAUDE.md` = `@AGENTS.md`, loaded on demand when notes there are read | nested `AGENTS.md` (VS Code Copilot harness, by default) |
 | Skills | `.mesh/skills/<n>/`, `.local/skills/<n>/` | `.claude/skills/<n>/` | `.github/skills/<n>/` |
 | Agents | `.mesh/agents/<n>.md`, `.local/agents/<n>.md` | `.claude/agents/<n>.md` | `.github/agents/<n>.agent.md` |
-| Deterministic actions | — | `npx -y brain-mesh@<pinned> … --json` | same |
+| Deterministic actions | — | `npx -y brain-mesh-ai-workspace@<pinned> … --json` | same |
 | v0 support level | — | reference client: full scenario checklist | rendered and smoke-tested |
 
 - Skills use the Agent Skills format; `name` equals the folder name (Copilot silently skips a mismatch) and `description` is required.
 - Agents use a brain-mesh source format: frontmatter `name` (= file stem), `description`, `tools` from the abstract set `read | search | edit | execute`, mapped per client (`search` → Claude `Grep, Glob`; `execute` → Claude `Bash`, Copilot `execute`). `model` is omitted so both inherit the session model.
 - Rendering writes only the entries in its render record; everything else in `.claude/` and `.github/` (e.g. `settings*.json`, `CLAUDE.local.md`) belongs to the user.
 - The render record `.mesh/render.json` lists every managed entry (`managed`, `seed`, `block`) with the sha256 of what was rendered; `upgrade` uses it to find hand edits.
-- Skills don't pre-approve the shell. The getting-started docs show how to auto-approve the `npx -y brain-mesh@` prefix in each client, and skills batch work into few CLI calls (about 1 s each).
+- Skills don't pre-approve the shell. The getting-started docs show how to auto-approve the `npx -y brain-mesh-ai-workspace@` prefix in each client, and skills batch work into few CLI calls (about 1 s each).
 
 ### 9.3 Platforms
 

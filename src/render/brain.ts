@@ -10,7 +10,7 @@ import type { BrainModel, WorkspaceModel } from '../workspace/load.js';
 import { packageCore } from './core.js';
 
 /** Unversioned, so brain content never depends on the core version (ADR 0001, plan Ruling 11). */
-export const BRAIN_SCHEMA_URL = 'https://unpkg.com/brain-mesh/schemas/brain.schema.json';
+export const BRAIN_SCHEMA_URL = 'https://unpkg.com/brain-mesh-ai-workspace/schemas/brain.schema.json';
 
 const byString = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 

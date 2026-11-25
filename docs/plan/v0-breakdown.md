@@ -66,8 +66,8 @@ Open points from the [chunk 1 research](../research/2026-11-chunk-01-research.md
 - **Chunk 12:** `init` warms the `npx` cache with one call ([research Q4.4](../research/2026-11-chunk-01-research.md)); moved from chunk 6 because the pin can't be fetched before the release.
 - **Chunk 12:** does Copilot CLI show duplicates when a skill exists in both `.claude/skills/` and `.github/skills/`? Checked in the Copilot smoke test; if it does, render skills for Copilot CLI only into `.github/skills/` and document it.
 - **Chunk 6 (done):** `init` and the pre-commit hook; see the [chunk 6 checks](../research/2026-11-chunk-01-research.md#chunk-6-checks).
-- **Chunk 7:** the pre-commit hook fires from VS Code and Obsidian-git commits on Windows (moved from chunk 6: checked once dogfooding starts in those editors).
-- **Chunk 7:** decide the pin of a dogfood workspace before the first npm release: generated files call `npx -y brain-mesh@0.0.0`, which can't be fetched.
+- **Chunk 7:** the pre-commit hook fires from VS Code and Obsidian-git commits on Windows (moved from chunk 6). Ramon checks while dogfooding.
+- **Chunk 7 (done):** the dogfood pin is a published alpha: 0.1.0-alpha.2 on npm under `next`, as `brain-mesh-ai-workspace` (npm refused `brain-mesh` as too similar to `brainmesh`); the command stays `brain-mesh`. The personal scenarios pass on Claude Code 2.1.325 ([run log](../scenarios.md#run-log)).
 - **Chunk 8:** logged-out `gh` behaviour, tested with a fake `gh`; re-check the team-repo permission endpoint, which needs `Accept: application/vnd.github.v3.repository+json`.
 - **Chunk 9:** with Obsidian open, mount and unmount a brain and confirm `.git/` contents don't show up in search.
 
@@ -97,7 +97,7 @@ Spec ([spec.md](../spec.md)) and glossary:
 - [ ] Fix the workspace tree comment that says whole client subfolders are gitignored.
 - [ ] 12: add the open question of what happens to a user-namespace workspace repo when an EMU account is deprovisioned.
 - [ ] 4.1: note that personal skills in `~/.claude/skills/` override workspace skills with the same name.
-- [ ] Decide whether Claude skills pre-approve a scoped `Bash(npx -y brain-mesh@<pin>:*)` instead of no shell approval.
+- [ ] Decide whether Claude skills pre-approve a scoped `Bash(npx -y brain-mesh-ai-workspace@<pin>:*)` instead of no shell approval.
 
 ## Deferred minors from chunk 2
 
@@ -149,3 +149,17 @@ Small fixes the chunk 6 final review raised and left open.
 - [ ] A missing `gh` or `git` on a non-English Windows is not recognised (the check matches cmd's English "is not recognized" text), and a missing `git` has no check at all; probe with `gh --version` / `git --version` instead.
 - [ ] `git` and `gh` can wait on a credential or pinentry prompt when an agent runs `commit --json`; set `GIT_TERMINAL_PROMPT=0` in `--json` mode or document it.
 - [ ] `commit` pushes every unpushed commit on the branch, not only personal ones; say how many commits were pushed.
+
+## Deferred minors from chunk 7
+
+From the [chunk 7 plan](../superpowers/plans/2026-11-25-chunk-07-personal-skills.md) final review.
+
+- [ ] `search`: `ß` and `ss` don't find each other in either direction; fold `ß` → `ss` on both query and text.
+- [ ] `search`: the title regex drops a trailing `#` that belongs to the text (`# Use C#` → "Use C"), and a fenced `# comment` can become the title.
+- [ ] npm `latest` stays on 0.1.0-alpha.0, whose ingest fails P3/P4; move `latest` to the newest alpha (`npm dist-tag add`) or deprecate alpha.0 and the `0.0.0-stage` placeholder.
+- [ ] `package-lock.json` still says name `brain-mesh`, version 0.0.0; refresh with `npm install --package-lock-only`.
+- [ ] `search` loads and `git status`-checks every brain even with `--brain`, and passes on warnings for brains it didn't search.
+- [ ] `search --brain ""` (or `,`) searches nothing without an error; make an empty list a usage error.
+- [ ] `npx brain-mesh-ai-workspace` run inside the brain-mesh repo itself resolves to the repo and fails; development checkout only.
+- [ ] The e2e packaging check covers `.claude/skills` only, not `.github/skills`.
+- [ ] After an ingest that only appends, a note's stale `summary` (e.g. "7-day TTL") still ranks as a `summary` hit; consider having ingest propose the summary change as its own item.
