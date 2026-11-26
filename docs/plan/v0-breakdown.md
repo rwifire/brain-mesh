@@ -37,7 +37,7 @@ Personal brain plus one shared brain, PRs through GitHub.
 
 | # | Chunk | Done when |
 | --- | --- | --- |
-| 8 | **Host adapter.** gh-based get permission, validate owner, create PR, create workspace repo; `--offline` handling. | Adapter has a fake for tests and a real implementation exercised against a sandbox repo. |
+| 8 | **Host adapter.** gh-based get permission, validate owner, create PR, create workspace repo; `--offline` handling. Also: new brains get their folder skeleton (`.gitkeep` per folder). | Adapter has a fake for tests and a real implementation exercised against a sandbox repo; a new workspace's personal brain shows its folders. |
 | 9 | **Mount lifecycle.** `mount`, `unmount`, `mounts`, `sync` (incl. cloning missing mounts), `brain new` (URL and local), `brain publish`, `init` restore. | Cloning the dogfood workspace on a second machine and running `init` restores it fully. |
 | 10 | **Contribute flow.** Branch → PR → back to default; `contribute` skill; people-policy check (deterministic + reviewer agent); consistency-reviewer; cross-brain `search`. | The shared-brain scenarios of the checklist pass on Claude Code against the sandbox shared brain. |
 
@@ -68,7 +68,8 @@ Open points from the [chunk 1 research](../research/2026-11-chunk-01-research.md
 - **Chunk 6 (done):** `init` and the pre-commit hook; see the [chunk 6 checks](../research/2026-11-chunk-01-research.md#chunk-6-checks).
 - **Chunk 7:** the pre-commit hook fires from VS Code and Obsidian-git commits on Windows (moved from chunk 6). Ramon checks while dogfooding.
 - **Chunk 7 (done):** the dogfood pin is a published alpha: 0.1.0-alpha.2 on npm under `next`, as `brain-mesh-ai-workspace` (npm refused `brain-mesh` as too similar to `brainmesh`); the command stays `brain-mesh`. The personal scenarios pass on Claude Code 2.1.325 ([run log](../scenarios.md#run-log)).
-- **Chunk 8:** logged-out `gh` behaviour, tested with a fake `gh`; re-check the team-repo permission endpoint, which needs `Accept: application/vnd.github.v3.repository+json`.
+- **Chunk 8 (done):** logged-out and offline `gh` behaviour, checked with the real gh 2.100.0 and pinned in tests; the adapter passes against a sandbox repo for permissions, user owners and PRs. See the [chunk 8 checks](../research/2026-11-chunk-01-research.md#chunk-8-checks).
+- **Chunk 10:** re-check the team-repo permission endpoint (`Accept: application/vnd.github.v3.repository+json`) and teams as seen by an outside collaborator, with `BRAIN_MESH_SANDBOX_TEAM` set against the sandbox shared brain; the chunk 8 sandbox account had no org team.
 - **Chunk 9:** with Obsidian open, mount and unmount a brain and confirm `.git/` contents don't show up in search.
 
 ## Moved from chunk 3
@@ -76,7 +77,7 @@ Open points from the [chunk 1 research](../research/2026-11-chunk-01-research.md
 `doctor` checks from spec 8 that need code from a later chunk:
 
 - **Chunk 4 (done):** generated MOC lists, `CODEOWNERS` and `links_to` out of date (needs the generators), and `--fix`.
-- **Chunk 8:** owner validity and push rights (need the host adapter), and `--offline`.
+- **Chunk 8 (done):** owner validity and push rights (need the host adapter), and `--offline`.
 
 ## Deferred minors from chunk 1
 
@@ -114,7 +115,7 @@ Small fixes the chunk 3 final review raised and left open; none blocks chunk 4.
 
 - [ ] Dot folders under `areas/` (e.g. `areas/.trash/`) count as areas and get `area-readme-missing`; skip them like other dot folders.
 - [ ] Notes in `inbox/` are fully parsed although no check reads them (a 70 MB inbox took 22 s); skip parsing ignored places and keep `text` only where a check needs it.
-- [ ] `--offline` is rejected as an unknown option until chunk 8; accepting it as a no-op would be harmless.
+- [x] `--offline` is rejected as an unknown option until chunk 8; accepting it as a no-op would be harmless. (Chunk 8: `doctor --offline` exists.)
 - [ ] `src/brain/frontmatter.ts` and `src/doctor/checks/safety.ts` contain literal BOM characters; write them as `'﻿'`.
 
 ## Deferred minors from chunk 4
@@ -146,7 +147,7 @@ Small fixes the chunk 6 final review raised and left open.
 
 - [ ] When `commit` restores the user's other changes and the stash pop conflicts, `W_STASH_KEPT` says they "could not be restored" although the tree may hold conflict markers; say so and point to `git stash list`.
 - [ ] A `commit` whose `git commit` fails after `git add -A -- brains/personal` leaves the personal changes staged; unstage them again.
-- [ ] A missing `gh` or `git` on a non-English Windows is not recognised (the check matches cmd's English "is not recognized" text), and a missing `git` has no check at all; probe with `gh --version` / `git --version` instead.
+- [ ] (gh half done in chunk 8: `login` probes `gh --version`; `git` still open) A missing `gh` or `git` on a non-English Windows is not recognised (the check matches cmd's English "is not recognized" text), and a missing `git` has no check at all; probe with `gh --version` / `git --version` instead.
 - [ ] `git` and `gh` can wait on a credential or pinentry prompt when an agent runs `commit --json`; set `GIT_TERMINAL_PROMPT=0` in `--json` mode or document it.
 - [ ] `commit` pushes every unpushed commit on the branch, not only personal ones; say how many commits were pushed.
 
@@ -163,3 +164,14 @@ From the [chunk 7 plan](../superpowers/plans/2026-11-25-chunk-07-personal-skills
 - [ ] `npx brain-mesh-ai-workspace` run inside the brain-mesh repo itself resolves to the repo and fails; development checkout only.
 - [ ] The e2e packaging check covers `.claude/skills` only, not `.github/skills`.
 - [ ] After an ingest that only appends, a note's stale `summary` (e.g. "7-day TTL") still ranks as a `summary` hit; consider having ingest propose the summary change as its own item.
+
+## Deferred minors from chunk 8
+
+From the [chunk 8 plan](../superpowers/plans/2026-11-25-chunk-08-host-adapter.md) final review.
+
+- [ ] Team-repo lookup answering 200 without a `permissions` body reads as `no-write` (a false `owner-no-write`); return `unknown` instead.
+- [ ] The HTTP status is read only from `(HTTP n)`; a bare `gh: HTTP 404` becomes `E_HOST` and skips every network check. Match `\bHTTP (\d{3})\b`.
+- [ ] `githubRepoOf` misses `https://user@github.com/…`, `ssh://git@github.com:22/…` and user-less scp `github.com:o/r.git`; SSH host aliases (`git@github.com-work:…`) get a misleading "not on github.com" warning.
+- [ ] With `gh` missing on non-English Windows, doctor's `W_NETWORK_SKIPPED` quotes cmd's localized text instead of "gh is not installed"; probe `gh --version` once before the first API call.
+- [ ] Outside collaborators can't see the org's teams, so every team owner gives `owner-not-found`; confirm in the sandbox run, then return `unknown`.
+- [ ] Owner lookups run one after another (about 0.3–0.5 s each); run them with a bounded `mapLimit`.

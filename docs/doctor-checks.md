@@ -33,6 +33,9 @@ Generated from `src/doctor/codes.ts`; do not edit by hand. `brain-mesh doctor --
 | `claude-md-invalid` | error |  | A `CLAUDE.md` in a brain is anything other than the line `@AGENTS.md`. |
 | `codeowners-shadowed` | error |  | A brain has `.github/CODEOWNERS`, which hides the generated root `CODEOWNERS` on GitHub. |
 | `codeowners-redundant` | warning |  | A brain has `docs/CODEOWNERS`, which duplicates the generated root file. |
+| `push-rights-missing` | error |  | A `contribute` mount's repo does not give you write access. |
+| `owner-not-found` | error |  | A shared brain's or area's owner does not exist on the host, or is not visible to you. |
+| `owner-no-write` | error |  | An owner exists but has no write access to the brain repo, so GitHub ignores it in `CODEOWNERS`. |
 | `read-mount-dirty` | warning |  | A `read` mount has uncommitted changes. |
 | `links-to-outdated` | error | yes | `links_to` in `brain.yaml` does not list the brains this brain links to. |
 | `moc-outdated` | error | yes | A generated MOC list is missing entries, lists notes that no longer belong, or is missing its markers. |

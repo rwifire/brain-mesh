@@ -29,6 +29,12 @@ describe('createWorkspace', () => {
     expect(runChecks(ws)).toEqual([]);
   });
 
+  it('the personal brain opens with its folders', async () => {
+    const { root } = await create();
+    expect(await read(root, 'brains/personal/inbox/.gitkeep')).toBe('');
+    expect(runChecks(await loadWorkspace(root)).filter((f) => f.path?.startsWith('brains/personal'))).toEqual([]);
+  });
+
   it('lays out the workspace', async () => {
     const { files } = await create();
     for (const p of [

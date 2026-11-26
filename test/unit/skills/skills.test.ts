@@ -92,6 +92,10 @@ describe('core skills', () => {
     expect(ingest.indexOf('{{cli}} doctor personal')).toBeLessThan(ingest.indexOf('{{cli}} commit'));
   });
 
+  it('ingest lists only markdown inbox items', async () => {
+    expect(await skill('ingest')).toContain('the `.md` files in `brains/personal/inbox/`');
+  });
+
   it('search guidance asks for a few words and a retry with fewer', async () => {
     for (const n of ['ask', 'ingest']) expect(await skill(n), n).toContain('2–4 distinctive words');
   });

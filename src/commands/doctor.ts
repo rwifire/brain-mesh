@@ -1,9 +1,11 @@
 import { lstat, mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import type { CheckCode } from '../doctor/codes.js';
-import type { Finding } from '../doctor/finding.js';
+import { sortFindings, type Finding } from '../doctor/finding.js';
+import { hostChecks } from '../doctor/host-checks.js';
 import { runChecks } from '../doctor/run.js';
 import { planGenerated } from '../generate/plan.js';
+import type { Host } from '../host/host.js';
 import type { CommandDef } from '../main.js';
 import { CliError, ErrorCode, ExitCode, type Warning } from '../output.js';
 import { findWorkspaceRoot } from '../workspace/find.js';
@@ -70,39 +72,44 @@ async function fix(ws: WorkspaceModel, brain: string | undefined): Promise<{ fix
   return { fixed, warnings };
 }
 
-export const doctorCommand: CommandDef = {
-  name: 'doctor',
-  description: 'check brains for broken links, structure and policy problems',
-  configure: (cmd) => {
-    cmd.argument('[brain]', 'check only this brain');
-    cmd.option('--fix', 'regenerate out-of-date generated content');
-  },
-  run: async (ctx, args, opts) => {
-    const root = await findWorkspaceRoot(ctx.cwd);
-    if (root === null) {
-      throw new CliError(ErrorCode.NoWorkspace, `no mesh.yaml found in ${ctx.cwd} or any parent folder`, ExitCode.Failure);
-    }
-    let ws = await loadWorkspace(root);
-    const only = args[0];
-    if (only !== undefined && !ws.brains.some((b) => b.id === only) && !ws.missing.includes(only)) {
-      const why = ws.meshError !== null ? ' (mesh.yaml is invalid, so only the personal brain can be checked)' : '';
-      throw new CliError(ErrorCode.UnknownBrain, `unknown brain: ${only}${why}`, ExitCode.Usage);
-    }
-    let fixed: FixedFile[] = [];
-    let fixWarnings: Warning[] = [];
-    if (opts.fix === true) {
-      ({ fixed, warnings: fixWarnings } = await fix(ws, only));
-      if (fixed.length > 0) ws = await loadWorkspace(root);
-    }
-    const findings = runChecks(ws, only);
-    const errors = findings.filter((f) => f.severity === 'error').length;
-    const data: DoctorData = {
-      root,
-      brains: only === undefined ? ws.brains.map((b) => b.id) : [only],
-      findings,
-      counts: { errors, warnings: findings.length - errors },
-      fixed,
-    };
-    return { data, text: render(data), warnings: [...fixWarnings, ...ws.warnings], exitCode: errors > 0 ? ExitCode.Failure : ExitCode.Ok };
-  },
-};
+/** `doctor`: offline checks, then owner validity and push rights through `deps.host` (spec 8). */
+export function doctorCommand(deps: { host: Host }): CommandDef {
+  return {
+    name: 'doctor',
+    description: 'check brains for broken links, structure and policy problems',
+    configure: (cmd) => {
+      cmd.argument('[brain]', 'check only this brain');
+      cmd.option('--fix', 'regenerate out-of-date generated content');
+      cmd.option('--offline', 'skip checks that need the network');
+    },
+    run: async (ctx, args, opts) => {
+      const root = await findWorkspaceRoot(ctx.cwd);
+      if (root === null) {
+        throw new CliError(ErrorCode.NoWorkspace, `no mesh.yaml found in ${ctx.cwd} or any parent folder`, ExitCode.Failure);
+      }
+      let ws = await loadWorkspace(root);
+      const only = args[0];
+      if (only !== undefined && !ws.brains.some((b) => b.id === only) && !ws.missing.includes(only)) {
+        const why = ws.meshError !== null ? ' (mesh.yaml is invalid, so only the personal brain can be checked)' : '';
+        throw new CliError(ErrorCode.UnknownBrain, `unknown brain: ${only}${why}`, ExitCode.Usage);
+      }
+      let fixed: FixedFile[] = [];
+      let fixWarnings: Warning[] = [];
+      if (opts.fix === true) {
+        ({ fixed, warnings: fixWarnings } = await fix(ws, only));
+        if (fixed.length > 0) ws = await loadWorkspace(root);
+      }
+      const net = await hostChecks(ws, deps.host, { ...(only === undefined ? {} : { brain: only }), offline: opts.offline === true });
+      const findings = sortFindings([...runChecks(ws, only), ...net.findings]);
+      const errors = findings.filter((f) => f.severity === 'error').length;
+      const data: DoctorData = {
+        root,
+        brains: only === undefined ? ws.brains.map((b) => b.id) : [only],
+        findings,
+        counts: { errors, warnings: findings.length - errors },
+        fixed,
+      };
+      return { data, text: render(data), warnings: [...fixWarnings, ...ws.warnings, ...net.warnings], exitCode: errors > 0 ? ExitCode.Failure : ExitCode.Ok };
+    },
+  };
+}

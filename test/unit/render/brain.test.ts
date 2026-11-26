@@ -38,12 +38,21 @@ describe('manifestYaml', () => {
 });
 
 describe('brainFiles', () => {
+  it('a new brain has its folder skeleton', () => {
+    const personal = brainFiles(personalManifest('octo'));
+    for (const f of ['inbox', 'daily', 'notes', 'areas', 'maps', 'projects', 'sources']) expect(personal.get(`${f}/.gitkeep`), f).toBe('');
+    const shared = [...brainFiles(SRE).keys()];
+    expect(shared).toContain('notes/.gitkeep');
+    expect(shared).not.toContain('inbox/.gitkeep');
+    expect(shared).not.toContain('daily/.gitkeep');
+  });
+
   it('shared brain files', () =>
-    expect([...brainFiles(SRE).keys()]).toEqual(['AGENTS.md', 'CLAUDE.md', 'CODEOWNERS', 'brain.yaml', 'index.md']));
+    expect([...brainFiles(SRE).keys()]).toEqual(['AGENTS.md', 'CLAUDE.md', 'CODEOWNERS', 'areas/.gitkeep', 'brain.yaml', 'index.md', 'maps/.gitkeep', 'notes/.gitkeep', 'projects/.gitkeep', 'sources/.gitkeep']));
 
   it('personal brain files', () => {
     const files = brainFiles(personalManifest('octo-user'));
-    expect([...files.keys()]).toEqual(['AGENTS.md', 'CLAUDE.md', 'brain.yaml', 'index.md']);
+    expect([...files.keys()]).toEqual(['AGENTS.md', 'CLAUDE.md', 'areas/.gitkeep', 'brain.yaml', 'daily/.gitkeep', 'inbox/.gitkeep', 'index.md', 'maps/.gitkeep', 'notes/.gitkeep', 'projects/.gitkeep', 'sources/.gitkeep']);
     expect(files.get('AGENTS.md')).toContain('`inbox/` holds unprocessed captures');
     expect(files.get('AGENTS.md')).toContain('\n<!-- /brain-mesh:agents -->\n\n## Brain-specific notes\n');
     expect(files.get('CLAUDE.md')).toBe('@AGENTS.md\n');

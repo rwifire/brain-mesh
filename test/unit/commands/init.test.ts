@@ -139,7 +139,9 @@ describe('init', () => {
     expect((await init(folder, fakeHost({ repoUrl: bare }))).code).toBe(0);
     const eol = (await git(folder, 'ls-files', '--eol')).split('\n');
     expect(eol.length).toBeGreaterThan(5);
-    for (const line of eol) expect(line).toMatch(/^i\/lf /);
+    // Empty files (the .gitkeep skeleton) have no line endings: i/none.
+    for (const line of eol) expect(line).toMatch(/^i\/(lf|none) /);
+    for (const line of eol.filter((l) => l.startsWith('i/none'))) expect(line).toMatch(/\.gitkeep$/);
   });
 
   it('gitignored managed files are not committed', async () => {
