@@ -9,16 +9,26 @@ export interface RunResult {
 
 const firstLine = (s: string) => s.trim().split('\n')[0]!.trim();
 
+export interface GitOptions {
+  /** A call that talks to a remote: git never waits on a credential prompt (`GIT_TERMINAL_PROMPT=0`). */
+  network?: boolean;
+}
+
 /** Runs git in `cwd`; a non-zero exit is returned, not thrown. */
-export async function git(cwd: string, args: readonly string[]): Promise<RunResult> {
-  const r = await execa('git', args, { cwd, reject: false, stripFinalNewline: true });
+export async function git(cwd: string, args: readonly string[], opts: GitOptions = {}): Promise<RunResult> {
+  const r = await execa('git', args, {
+    cwd,
+    reject: false,
+    stripFinalNewline: true,
+    ...(opts.network === true ? { env: { GIT_TERMINAL_PROMPT: '0' } } : {}),
+  });
   if (r.exitCode === undefined) throw new CliError(ErrorCode.Git, `git could not be started: ${firstLine(String(r.message))}`);
   return { exitCode: r.exitCode, stdout: String(r.stdout), stderr: String(r.stderr) };
 }
 
 /** Runs git in `cwd` and returns stdout; a non-zero exit throws `E_GIT` with git's first stderr line. */
-export async function gitOk(cwd: string, args: readonly string[]): Promise<string> {
-  const r = await git(cwd, args);
+export async function gitOk(cwd: string, args: readonly string[], opts: GitOptions = {}): Promise<string> {
+  const r = await git(cwd, args, opts);
   if (r.exitCode !== 0) throw new CliError(ErrorCode.Git, `git ${args[0]} failed: ${firstLine(r.stderr || r.stdout)}`);
   return r.stdout;
 }
