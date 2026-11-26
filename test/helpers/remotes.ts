@@ -40,3 +40,20 @@ export async function pushToRemote(bare: string, rel: string, text: string): Pro
   await git(work, 'commit', '-q', '-m', `add ${rel}`);
   await git(work, 'push', '-q', 'origin', 'HEAD:main');
 }
+
+/**
+ * A workspace made by the real `init` (fake host, a bare repo as its remote) in `<base>/ws`, pushed.
+ * Call `isolateGit()` first.
+ */
+export async function initWorkspace(base?: string): Promise<{ base: string; root: string; remote: string }> {
+  const { initCommand } = await import('../../src/commands/init.js');
+  const { fakeHost } = await import('./host.js');
+  const { run } = await import('./cli.js');
+  const b = base ?? (await tempDir('bm ws '));
+  const remote = await emptyRemote(b, 'ai-workspace');
+  const root = join(b, 'ws');
+  await mkdir(root);
+  const r = await run(['init', '--json'], root, [initCommand({ host: fakeHost({ repoUrl: remote }) })]);
+  if (r.code !== 0) throw new Error(`init failed: ${r.out}`);
+  return { base: b, root, remote };
+}
