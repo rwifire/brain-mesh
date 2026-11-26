@@ -195,3 +195,26 @@ Afterwards, in the new workspace:
 ### Pre-commit hook from VS Code and Obsidian-git (Windows)
 **Answer:** Not checked yet. Both editors run the same `git` with `core.hooksPath`, so the hook should fire, but an editor may start git with a `PATH` that has no `node`; the hook then stays silent rather than blocking the commit.
 **Consequence for brain-mesh:** Moved to chunk 7, checked once dogfooding starts in those editors.
+
+## Chunk 8 checks
+
+### Logged-out and offline `gh`
+**Answer:** `gh` gives no single "offline" signal, so brain-mesh reads it from the text:
+- **Logged out:** `gh auth status` exits 1 with "You are not logged into any GitHub hosts. To log in, run: gh auth login", and `gh api` exits 4 with "To get started with GitHub CLI, please run:  gh auth login".
+- **Offline:** `gh api` exits 1 with `Get "https://api.github.com/user": proxyconnect tcp: dial tcp 127.0.0.1:9: connectex: No connection could be made because the target machine actively refused it.` (Windows wording).
+- **Offline with a token:** `gh auth status` only says "The token in GH_TOKEN is invalid." It never mentions the network. So when `auth status` fails, `login` asks the API once more to tell the two apart.
+- **The OS keyring counts too:** gh keeps a login in the OS keyring as well as in its config folder. With `GH_HOST=github.com`, an empty `GH_CONFIG_DIR` still finds the keyring login, so a logged-out state can only be simulated where the keyring holds no github.com token (CI).
+
+**Source:** local runs with an empty `GH_CONFIG_DIR`, no token variables, and `GH_TOKEN=gho_dummy` plus `HTTPS_PROXY=http://127.0.0.1:9` for offline; `test/e2e/gh-real.test.ts` · **Checked:** 2026-11-25, gh 2.100.0, Windows
+**Consequence for brain-mesh:** The adapter maps these to `E_GH_AUTH` and `E_OFFLINE`. It runs `gh` with `GH_HOST=github.com` and `GH_PROMPT_DISABLED=1`, and checks `auth status --hostname github.com`, so a GitHub Enterprise login is never used by mistake.
+
+### The adapter against github.com
+**Answer:** These work against a private sandbox repo:
+- `permission` returns write or better on the sandbox and `none` for a repo that doesn't exist.
+- `ownerStatus` returns `ok` for the user's own login and `not-found` for a made-up user.
+- `createPullRequest` opens a PR and returns its number and URL. A second PR from the same branch fails with `E_PR_CREATE`. The PR is then closed and its branch deleted.
+
+The team case was skipped: the account has no org team. So whether the team-repo endpoint needs `Accept: application/vnd.github.v3.repository+json` to return permissions is still not confirmed against the real API. The same goes for how teams look to an outside collaborator.
+
+**Source:** `BRAIN_MESH_SANDBOX_REPO=rwifire/brain-mesh-sandbox npx vitest run test/e2e/github-sandbox.test.ts` → 3 passed, 1 skipped (team owners), 12.5 s · **Checked:** 2026-11-26, gh 2.100.0, Windows
+**Consequence for brain-mesh:** The adapter is done for user owners, permissions and PRs. The team check moves to chunk 10, which runs against a sandbox shared brain owned by a team. It sets `BRAIN_MESH_SANDBOX_TEAM` there. If GitHub answers 204 without a body, the deferred minor about permission-less 200 answers becomes a fix.
