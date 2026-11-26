@@ -10,7 +10,7 @@ export interface CommandContext {
 }
 
 export interface CommandDef {
-  /** Single word; nested commands (`brain new`) arrive in chunk 9. */
+  /** One word, or `<group> <name>` for a sub-command such as `brain new`. */
   name: string;
   description: string;
   /** Add arguments and options. */
@@ -56,8 +56,21 @@ export async function main(
       command = sub.name();
     });
 
+  const groups = new Map<string, Command>();
+  const parentOf = (name: string): Command => {
+    let group = groups.get(name);
+    if (group === undefined) {
+      group = program.command(name).hook('preSubcommand', (_g, sub) => {
+        command = `${name} ${sub.name()}`;
+      });
+      groups.set(name, group);
+    }
+    return group;
+  };
+
   for (const def of options.commands ?? defaultCommands) {
-    const cmd = program.command(def.name).description(def.description);
+    const [first, leaf] = def.name.split(' ');
+    const cmd = (leaf === undefined ? program.command(first!) : parentOf(first!).command(leaf)).description(def.description);
     def.configure?.(cmd);
     cmd.action(async (...actionArgs: unknown[]) => {
       const self = actionArgs[actionArgs.length - 1] as Command;
