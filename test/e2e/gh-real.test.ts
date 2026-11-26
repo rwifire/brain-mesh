@@ -60,6 +60,9 @@ describe.skipIf(!hasGh)('real gh', () => {
     process.env.GH_HOST = 'ghe.example.invalid';
     process.env.GH_TOKEN = 'gho_dummy';
     process.env.HTTPS_PROXY = 'http://127.0.0.1:9';
-    await expect(githubHost().login()).rejects.toMatchObject({ code: 'E_OFFLINE', message: expect.stringContaining('api.github.com') });
+    // Unpinned, gh would try ghe.example.invalid and quote that host; pinned, the failure is about github.com.
+    const err = (await githubHost().login().catch((e: unknown) => e)) as Error;
+    expect(err).toMatchObject({ code: 'E_OFFLINE', message: expect.stringContaining('github.com') });
+    expect(err.message).not.toContain('ghe.example.invalid');
   });
 });
