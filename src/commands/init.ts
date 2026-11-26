@@ -9,6 +9,7 @@ import { packageVersion } from '../meta.js';
 import { CliError, ErrorCode, ExitCode, type Warning } from '../output.js';
 import { createWorkspace } from '../workspace/create.js';
 import { loadWorkspace } from '../workspace/load.js';
+import { assertEmptyRemote } from '../workspace/repo.js';
 
 export interface InitData {
   root: string;
@@ -39,15 +40,6 @@ async function assertEmpty(root: string): Promise<void> {
   }
 }
 
-/** `--remote` must be reachable and hold no refs (plan Ruling 5). */
-async function assertEmptyRemote(root: string, url: string): Promise<void> {
-  const r = await git(root, ['ls-remote', url]);
-  if (r.exitCode !== 0) throw new CliError(ErrorCode.Git, `cannot reach ${url}: ${firstLine(r.stderr)}`);
-  if (r.stdout.trim() !== '') {
-    throw new CliError(ErrorCode.RemoteNotEmpty, `${url} already has commits; init needs an empty repo`);
-  }
-}
-
 /** `init`: a new workspace, its private repo and the first push (spec 4, plan Rulings 1–8, 16). */
 export function initCommand(deps: { host: Host }): CommandDef {
   return {
@@ -70,7 +62,7 @@ export function initCommand(deps: { host: Host }): CommandDef {
       const user = await deps.host.login();
       let remote: string;
       if (remoteOpt !== undefined) {
-        await assertEmptyRemote(root, remoteOpt);
+        await assertEmptyRemote(root, remoteOpt, 'init');
         remote = remoteOpt;
       } else {
         remote = await deps.host.createPrivateRepo(name);

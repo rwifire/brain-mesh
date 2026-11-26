@@ -5,6 +5,7 @@ import { git } from '../git.js';
 import type { Host } from '../host/host.js';
 import type { CommandDef } from '../main.js';
 import { assertFreeId, brainIdOf, cloneBrain, removeFolder } from '../mount/clone.js';
+import { checkPushRights } from '../mount/rights.js';
 import { CliError, ErrorCode, ExitCode, type Warning } from '../output.js';
 import { renderWorkspace } from '../render/workspace.js';
 import type { Mount } from '../schemas/mesh.js';
@@ -25,9 +26,8 @@ export interface MountInfo {
 
 const exists = (p: string) => stat(p).then(() => true, () => false);
 const firstLine = (s: string) => s.trim().split('\n')[0]!.trim();
-const PUSH_ROLES = new Set(['admin', 'maintain', 'write']);
 
-async function workspaceRoot(cwd: string): Promise<string> {
+export async function workspaceRoot(cwd: string): Promise<string> {
   const root = await findWorkspaceRoot(cwd);
   if (root === null) throw new CliError(ErrorCode.NoWorkspace, `no mesh.yaml found in ${cwd} or any parent folder`, ExitCode.Failure);
   return root;
@@ -44,29 +44,10 @@ async function descriptionOf(root: string, id: string): Promise<string | null> {
 }
 
 /** Commits the workspace config and pulls/pushes; a commit of nothing (already recorded) is fine. */
-async function record(root: string, message: string): Promise<{ commit: string | null; pushed: boolean; warnings: Warning[] }> {
+export async function record(root: string, message: string): Promise<{ commit: string | null; pushed: boolean; warnings: Warning[] }> {
   const commit = await commitPaths(root, WORKSPACE_CONFIG, message);
   const { pushed, warnings } = await pullPush(root);
   return { commit, pushed, warnings };
-}
-
-/** Throws `E_NO_PUSH_RIGHTS` for a host URL without write access; warns when the URL is not on the host. */
-async function checkPushRights(host: Host, url: string, warnings: Warning[]): Promise<void> {
-  const repo = host.repoOf(url);
-  if (repo === null) {
-    warnings.push({ code: 'W_PUSH_RIGHTS_UNCHECKED', message: `${url} is not on github.com, so push rights were not checked; a later push may fail` });
-    return;
-  }
-  let permission: string;
-  try {
-    permission = await host.permission(repo);
-  } catch (err) {
-    if (err instanceof CliError) throw new CliError(err.code, `${err.message}; push rights are checked before a contribute mount (use --mode read to mount without them)`, err.exitCode);
-    throw err;
-  }
-  if (!PUSH_ROLES.has(permission)) {
-    throw new CliError(ErrorCode.NoPushRights, `you have ${permission} access to ${repo.owner}/${repo.name}, not write; mount it with --mode read, or ask its owner for write access`);
-  }
 }
 
 export interface MountData {
@@ -98,7 +79,7 @@ export function mountCommand(deps: { host: Host }): CommandDef {
       const mounts = await readMounts(root);
       if (mounts.some((m) => m.id === id)) throw new CliError(ErrorCode.MountExists, `${id} is already mounted`);
       await assertFreeId(root, id);
-      if (mode === 'contribute') await checkPushRights(deps.host, url, warnings);
+      if (mode === 'contribute') await checkPushRights(deps.host, url, warnings, 'use --mode read to mount it without them, or ask its owner for write access');
 
       await cloneBrain(root, url, { id });
       const dir = join(root, 'brains', id);

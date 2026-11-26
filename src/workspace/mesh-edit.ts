@@ -62,8 +62,8 @@ export async function editMesh(root: string, change: (mounts: Mount[]) => Mount[
   return next.data;
 }
 
-/** The mounts of `root/mesh.yaml`; throws `E_MESH_INVALID` when it cannot be read or fails the schema. */
-export async function readMounts(root: string): Promise<Mount[]> {
+/** `root/mesh.yaml`; throws `E_MESH_INVALID` when it cannot be read or fails the schema. */
+export async function readMesh(root: string): Promise<MeshConfig> {
   let raw: unknown;
   try {
     raw = parse(await readFile(join(root, 'mesh.yaml'), 'utf8'));
@@ -72,5 +72,8 @@ export async function readMounts(root: string): Promise<Mount[]> {
   }
   const mesh = MeshConfigSchema.safeParse(raw);
   if (!mesh.success) throw new CliError(ErrorCode.MeshInvalid, `mesh.yaml is invalid: ${mesh.error.issues[0]?.message ?? 'does not match the schema'}`);
-  return mesh.data.mounts;
+  return mesh.data;
 }
+
+/** The mounts of `root/mesh.yaml`; throws like `readMesh`. */
+export const readMounts = async (root: string): Promise<Mount[]> => (await readMesh(root)).mounts;

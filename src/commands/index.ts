@@ -1,6 +1,7 @@
 import type { CommandDef } from '../main.js';
 import { githubHost } from '../host/github.js';
 import type { Host } from '../host/host.js';
+import { brainNewCommand, brainPublishCommand } from './brain.js';
 import { commitCommand } from './commit.js';
 import { doctorCommand } from './doctor.js';
 import { initCommand } from './init.js';
@@ -21,6 +22,8 @@ export function commandsFor(host: Host): readonly CommandDef[] {
     mountsCommand,
     unmountCommand,
     syncCommand,
+    brainNewCommand({ host }),
+    brainPublishCommand({ host }),
   ];
 }
 

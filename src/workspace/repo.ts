@@ -18,6 +18,13 @@ async function rebaseInProgress(root: string): Promise<boolean> {
   return false;
 }
 
+/** Fails unless `url` is reachable and holds no refs; `what` names the command that needs it empty. */
+export async function assertEmptyRemote(cwd: string, url: string, what: string): Promise<void> {
+  const r = await git(cwd, ['ls-remote', url], { network: true });
+  if (r.exitCode !== 0) throw new CliError(ErrorCode.Git, `cannot reach ${url}: ${firstLine(r.stderr)}`);
+  if (r.stdout.trim() !== '') throw new CliError(ErrorCode.RemoteNotEmpty, `${url} already has commits; ${what} needs an empty repo`);
+}
+
 /** Commits the changed ones of `paths` (and nothing else); returns the commit, or null when none changed. */
 export async function commitPaths(root: string, paths: readonly string[], message: string): Promise<string | null> {
   const status = await gitOk(root, ['status', '--porcelain', '-z', '--untracked-files=all', '--', ...paths]);
