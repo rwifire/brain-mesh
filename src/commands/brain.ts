@@ -8,10 +8,11 @@ import { checkPushRights } from '../mount/rights.js';
 import { CliError, ErrorCode, ExitCode, type Warning } from '../output.js';
 import { brainFiles, sharedManifest } from '../render/brain.js';
 import { renderWorkspace } from '../render/workspace.js';
+import { SharedBrainManifestSchema } from '../schemas/brain.js';
 import { BrainId } from '../schemas/common.js';
 import { editMesh, readMesh } from '../workspace/mesh-edit.js';
-import { assertEmptyRemote } from '../workspace/repo.js';
-import { isNetworkUrl, repoNameFromUrl } from '../workspace/url.js';
+import { assertEmptyRemote, assertGitIdentity } from '../workspace/repo.js';
+import { absoluteUrl, isNetworkUrl, repoNameFromUrl } from '../workspace/url.js';
 import { record, workspaceRoot } from './mount.js';
 
 const firstLine = (s: string) => s.trim().split('\n')[0]!.trim();
@@ -53,7 +54,7 @@ export function brainNewCommand(deps: { host: Host }): CommandDef {
     },
     run: async (ctx, args, opts) => {
       const arg = args[0]!;
-      const url = looksLikeUrl(arg) ? arg : null;
+      const url = looksLikeUrl(arg) ? absoluteUrl(arg, ctx.cwd) : null;
       let id: string;
       if (url !== null) id = brainIdOf(url);
       else if (BrainId.safeParse(arg).success) id = arg;
@@ -63,18 +64,26 @@ export function brainNewCommand(deps: { host: Host }): CommandDef {
       const mesh = await readMesh(root);
       if (mesh.mounts.some((m) => m.id === id)) throw new CliError(ErrorCode.MountExists, `${id} is already mounted`);
       await assertFreeId(root, id);
-      const warnings: Warning[] = [];
-      if (url !== null) {
-        await checkPushRights(deps.host, url, warnings, RIGHTS_HINT);
-        await assertEmptyRemote(root, url, 'brain new');
-      }
-
       const manifest = sharedManifest({
         id,
         name: typeof opts.name === 'string' ? opts.name : id,
         description: String(opts.description),
         owner: typeof opts.owner === 'string' ? opts.owner : `@${mesh.user}`,
       });
+      const valid = SharedBrainManifestSchema.safeParse(manifest);
+      if (!valid.success) {
+        const issue = valid.error.issues[0];
+        const field = String(issue?.path[0] ?? 'brain.yaml');
+        const flag = field === 'owner' ? '--owner (@login or @org/team)' : field === 'name' ? '--name' : field === 'description' ? '--description' : field;
+        throw new CliError(ErrorCode.Usage, `${flag} is not valid for brain.yaml: ${issue?.message ?? 'does not match the schema'}`, ExitCode.Usage);
+      }
+      await assertGitIdentity(root);
+      const warnings: Warning[] = [];
+      if (url !== null) {
+        await checkPushRights(deps.host, url, warnings, RIGHTS_HINT);
+        await assertEmptyRemote(root, url, 'brain new');
+      }
+
       const dir = join(root, 'brains', id);
       try {
         for (const [rel, text] of brainFiles(manifest)) {
@@ -112,7 +121,8 @@ export function brainPublishCommand(deps: { host: Host }): CommandDef {
       cmd.argument('<git-url>', 'clone URL of an empty repo named like the brain');
     },
     run: async (ctx, args) => {
-      const [id, url] = args as [string, string];
+      const [id, rawUrl] = args as [string, string];
+      const url = absoluteUrl(rawUrl, ctx.cwd);
       const root = await workspaceRoot(ctx.cwd);
       const mount = (await readMesh(root)).mounts.find((m) => m.id === id);
       if (mount === undefined) throw new CliError(ErrorCode.UnknownBrain, `unknown brain: ${id} is not a mount in mesh.yaml`, ExitCode.Usage);
@@ -123,6 +133,7 @@ export function brainPublishCommand(deps: { host: Host }): CommandDef {
       if ((await git(dir, ['rev-parse', '--verify', '-q', 'refs/heads/main'])).exitCode !== 0) {
         throw new CliError(ErrorCode.Git, `brains/${id}/ has no main branch to publish`);
       }
+      await assertGitIdentity(root);
       const warnings: Warning[] = [];
       await checkPushRights(deps.host, url, warnings, RIGHTS_HINT);
       await assertEmptyRemote(root, url, 'brain publish');

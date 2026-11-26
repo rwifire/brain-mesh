@@ -11,7 +11,8 @@ import { renderWorkspace } from '../render/workspace.js';
 import type { Mount } from '../schemas/mesh.js';
 import { findWorkspaceRoot } from '../workspace/find.js';
 import { editMesh, readMounts } from '../workspace/mesh-edit.js';
-import { WORKSPACE_CONFIG, commitPaths, pullPush } from '../workspace/repo.js';
+import { WORKSPACE_CONFIG, assertGitIdentity, commitPaths, pullPush } from '../workspace/repo.js';
+import { absoluteUrl } from '../workspace/url.js';
 
 export interface MountInfo {
   id: string;
@@ -69,13 +70,14 @@ export function mountCommand(deps: { host: Host }): CommandDef {
       cmd.option('--mode <mode>', 'read or contribute', 'read');
     },
     run: async (ctx, args, opts) => {
-      const url = args[0]!;
+      const url = absoluteUrl(args[0]!, ctx.cwd);
       const mode = String(opts.mode);
       if (mode !== 'read' && mode !== 'contribute') throw new CliError(ErrorCode.Usage, `--mode must be read or contribute, not ${mode}`, ExitCode.Usage);
       const root = await workspaceRoot(ctx.cwd);
       const warnings: Warning[] = [];
 
       const id = brainIdOf(url);
+      await assertGitIdentity(root);
       const mounts = await readMounts(root);
       if (mounts.some((m) => m.id === id)) throw new CliError(ErrorCode.MountExists, `${id} is already mounted`);
       await assertFreeId(root, id);
@@ -133,8 +135,11 @@ async function unsavedWork(dir: string, mount: Mount): Promise<string | null> {
   return null;
 }
 
-/** `unmount <id>`: drops the mesh.yaml entry, renders, commits and pushes, then removes `brains/<id>`. */
-export const unmountCommand: CommandDef = {
+/**
+ * `unmount <id>`: drops the mesh.yaml entry, renders, commits and pushes, then removes `brains/<id>`
+ * with `remove`. A folder that cannot be removed (e.g. held open on Windows) is kept with `W_FOLDER_KEPT`.
+ */
+export const unmountCommandFor = (remove: (dir: string) => Promise<void>): CommandDef => ({
   name: 'unmount',
   description: 'unmount a shared brain: remove it from mesh.yaml, commit and push, delete its folder',
   configure: (cmd) => {
@@ -147,6 +152,7 @@ export const unmountCommand: CommandDef = {
     const mount = (await readMounts(root)).find((m) => m.id === id);
     if (mount === undefined) throw new CliError(ErrorCode.UnknownBrain, `unknown brain: ${id} is not a mount in mesh.yaml`, ExitCode.Usage);
     const dir = join(root, 'brains', id);
+    await assertGitIdentity(root);
     if (opts.force !== true) {
       const why = await unsavedWork(dir, mount);
       if (why !== null) throw new CliError(ErrorCode.MountDirty, `${why}; push or copy that work first, or pass --force to delete it`);
@@ -156,8 +162,17 @@ export const unmountCommand: CommandDef = {
     warnings.push(...(await renderWorkspace(root)).warnings);
     const r = await record(root, `Unmount ${id}`);
     warnings.push(...r.warnings);
-    await removeFolder(dir);
-    const data = { id, removed: true, commit: r.commit, pushed: r.pushed };
-    return { data, text: `Unmounted ${id}${r.pushed ? '; committed and pushed.' : '; committed locally, not pushed.'}`, warnings };
+    let removed = true;
+    try {
+      await remove(dir);
+    } catch (err) {
+      removed = false;
+      const why = err instanceof Error ? firstLine(err.message) : String(err);
+      warnings.push({ code: 'W_FOLDER_KEPT', message: `${id} is unmounted, but brains/${id}/ could not be deleted (${why}); delete it by hand once nothing holds it open` });
+    }
+    const data = { id, removed, commit: r.commit, pushed: r.pushed };
+    return { data, text: `Unmounted ${id}${r.pushed ? '; committed and pushed.' : '; committed locally, not pushed.'}${removed ? '' : ` Delete brains/${id}/ by hand.`}`, warnings };
   },
-};
+});
+
+export const unmountCommand: CommandDef = unmountCommandFor(removeFolder);

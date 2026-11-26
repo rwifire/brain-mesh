@@ -1,3 +1,5 @@
+import { isAbsolute, resolve } from 'node:path';
+
 /**
  * Whether a mount URL points at a server: `scheme://` other than `file://`, or scp form
  * `user@host:path`. Local paths (`/srv/a.git`, `C:\a`, `../a`) and `file://` URLs are not.
@@ -7,6 +9,15 @@ export function isNetworkUrl(url: string): boolean {
   const scheme = /^([a-z][a-z0-9+.-]*):\/\//i.exec(u);
   if (scheme !== null) return scheme[1]!.toLowerCase() !== 'file';
   return /^[^\s/\\@]+@[^\s/\\:]+:/.test(u);
+}
+
+/**
+ * A local path URL made absolute against `cwd`, so git resolves it the same in every folder it
+ * runs in; network and `file://` URLs and absolute paths are returned as they are.
+ */
+export function absoluteUrl(url: string, cwd: string): string {
+  if (isNetworkUrl(url) || /^file:\/\//i.test(url.trim()) || isAbsolute(url)) return url;
+  return resolve(cwd, url);
 }
 
 /**

@@ -18,6 +18,13 @@ async function rebaseInProgress(root: string): Promise<boolean> {
   return false;
 }
 
+/** Throws `E_GIT` unless git knows who commits (`user.name` and `user.email`); call before any change. */
+export async function assertGitIdentity(root: string): Promise<void> {
+  if ((await git(root, ['var', 'GIT_COMMITTER_IDENT'])).exitCode !== 0) {
+    throw new CliError(ErrorCode.Git, 'git does not know who you are; set git config --global user.name and user.email');
+  }
+}
+
 /** Fails unless `url` is reachable and holds no refs; `what` names the command that needs it empty. */
 export async function assertEmptyRemote(cwd: string, url: string, what: string): Promise<void> {
   const r = await git(cwd, ['ls-remote', url], { network: true });
@@ -69,11 +76,15 @@ export async function pullPush(root: string): Promise<{ pushed: boolean; warning
     };
     const pull = await git(root, ['pull', '-q', '--rebase'], { network: true });
     if (pull.exitCode !== 0 && (await rebaseInProgress(root))) {
+      const unmerged = await git(root, ['diff', '--name-only', '--diff-filter=U']);
+      const files = unmerged.stdout.split('\n').map((f) => f.trim()).filter((f) => f !== '');
       await git(root, ['rebase', '--abort']);
       await restore();
+      const what = files.length === 0 ? 'your changes conflict' : `${files.join(', ')} ${files.length === 1 ? 'conflicts' : 'conflict'}`;
+      const config = files.some((f) => (WORKSPACE_CONFIG as readonly string[]).includes(f));
       throw new CliError(
         ErrorCode.SyncConflict,
-        `your commit is kept locally, but brains/personal/ conflicts with ${upstream.stdout.trim()}; nothing was pushed. Run git pull --rebase, resolve the conflict, then git push`,
+        `your commit is kept locally, but ${what} with ${upstream.stdout.trim()}; nothing was pushed. Run git pull --rebase, resolve the conflict${config ? ' (in mesh.yaml keep both mount entries; take either side of AGENTS.md and .gitignore, brain-mesh regenerates them)' : ''}, git rebase --continue, then brain-mesh sync`,
       );
     }
     await restore();

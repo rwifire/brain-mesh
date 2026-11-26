@@ -12,7 +12,7 @@ import { renderWorkspace } from '../render/workspace.js';
 import { createWorkspace } from '../workspace/create.js';
 import { readMesh } from '../workspace/mesh-edit.js';
 import { loadWorkspace } from '../workspace/load.js';
-import { assertEmptyRemote } from '../workspace/repo.js';
+import { assertEmptyRemote, assertGitIdentity } from '../workspace/repo.js';
 
 export interface InitData {
   /** `restore` when the folder already held a cloned workspace (chunk 9 plan, decision 6). */
@@ -114,9 +114,7 @@ export function initCommand(deps: { host: Host }): CommandDef {
 
       // Everything that can fail is checked before anything is written or created (Ruling 6).
       if (await assertEmpty(root)) return restore(root);
-      if ((await git(root, ['var', 'GIT_COMMITTER_IDENT'])).exitCode !== 0) {
-        throw new CliError(ErrorCode.Git, 'git does not know who you are; set git config --global user.name and user.email');
-      }
+      await assertGitIdentity(root);
       const user = await deps.host.login();
       let remote: string;
       if (remoteOpt !== undefined) {
