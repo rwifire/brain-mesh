@@ -72,6 +72,16 @@ describe('githubHost', () => {
     await expect(githubHost(invalid).login()).rejects.toMatchObject({ code: 'E_GH_AUTH' });
   });
 
+  it('the offline message quotes the network line, not the first line', async () => {
+    // gh on the CI runners: auth status names the host first and the network error further down
+    const status = fail('github.com\n  X Failed to log in to github.com using token (GH_TOKEN)\n  - error connecting to api.github.com\n  - Active account: true');
+    const run = stub({ '--version': ok(), 'auth status --hostname github.com': status });
+    await expect(githubHost(run).login()).rejects.toMatchObject({
+      code: 'E_OFFLINE',
+      message: expect.stringContaining('(error connecting to api.github.com)'),
+    });
+  });
+
   it('repo create offline gives E_OFFLINE', async () => {
     const run = stub({ 'repo create ai-workspace --private': fail('error connecting to api.github.com') });
     await expect(githubHost(run).createPrivateRepo('ai-workspace')).rejects.toMatchObject({ code: 'E_OFFLINE' });

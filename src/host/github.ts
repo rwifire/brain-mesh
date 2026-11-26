@@ -27,10 +27,16 @@ export function ghFailure(r: RunResult): 'offline' | 'auth' | null {
   return null;
 }
 
+/** The line of gh's output that names the network failure (gh may print the host name first). */
+const networkLine = (r: RunResult) =>
+  `${r.stderr}\n${r.stdout}`
+    .split('\n')
+    .map((l) => l.trim().replace(/^[-X✗]\s+/, ''))
+    .find((l) => OFFLINE.test(l)) ?? firstLine(r.stderr || r.stdout);
 const offlineError = (r: RunResult) =>
   new CliError(
     ErrorCode.Offline,
-    `cannot reach github.com (${firstLine(r.stderr || r.stdout)}); check your connection, or use --offline where the command offers it`,
+    `cannot reach github.com (${networkLine(r)}); check your connection, or use --offline where the command offers it`,
   );
 const authError = () => new CliError(ErrorCode.GhAuth, 'gh is not logged in; run gh auth login');
 

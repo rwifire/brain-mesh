@@ -158,7 +158,7 @@ From the [chunk 7 plan](../superpowers/plans/2026-11-25-chunk-07-personal-skills
 - [ ] `search`: `ß` and `ss` don't find each other in either direction; fold `ß` → `ss` on both query and text.
 - [ ] `search`: the title regex drops a trailing `#` that belongs to the text (`# Use C#` → "Use C"), and a fenced `# comment` can become the title.
 - [ ] npm `latest` stays on 0.1.0-alpha.0, whose ingest fails P3/P4; move `latest` to the newest alpha (`npm dist-tag add`) or deprecate alpha.0 and the `0.0.0-stage` placeholder.
-- [ ] `package-lock.json` still says name `brain-mesh`, version 0.0.0; refresh with `npm install --package-lock-only`.
+- [x] `package-lock.json` still says name `brain-mesh`, version 0.0.0; refresh with `npm install --package-lock-only`. (Fixed with 0.1.0-alpha.3.)
 - [ ] `search` loads and `git status`-checks every brain even with `--brain`, and passes on warnings for brains it didn't search.
 - [ ] `search --brain ""` (or `,`) searches nothing without an error; make an empty list a usage error.
 - [ ] `npx brain-mesh-ai-workspace` run inside the brain-mesh repo itself resolves to the repo and fails; development checkout only.
