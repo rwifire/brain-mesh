@@ -2,7 +2,7 @@
 
 Spec 10: skills and agents are checked by hand against a fixture workspace before each release, on Claude Code (the reference client); Copilot gets a smoke test. This file holds the scenarios, how to run them and a log of runs.
 
-Chunk 7 adds the personal-brain scenarios (P1–P6). The shared-brain scenarios arrive with chunk 10, and chunk 12 finalises the list.
+Chunk 7 adds the personal-brain scenarios (P1–P6) and chunk 9 the mount checks (M1–M3). The shared-brain skill scenarios arrive with chunk 10, and chunk 12 finalises the list.
 
 ## Setup
 
@@ -101,6 +101,41 @@ After each scenario, check the result with `git -C "$base/workspace" log --stat 
 - the answer says the mounted brains don't cover it;
 - it names an owner to ask: the brain owner `@<login>`, since no area matches;
 - `git status` shows no change, and no new commit exists.
+
+## Mounts
+
+These run by hand against github.com, not in the scenario setup above, in a scratch workspace made by the version under test: restore refuses a workspace pinned to another version. `bm` stands for `npx -y brain-mesh-ai-workspace@<version>`. Make the workspace with `bm init --name ai-workspace-mounts` in an empty folder whose path contains a space. Afterwards, delete both scratch repos with `gh repo delete <login>/brain-dogfood` and `gh repo delete <login>/ai-workspace-mounts`.
+
+### M1 Mount a real shared brain read-only
+
+**Steps:**
+1. `gh repo create brain-dogfood --private`, then in the workspace `bm brain new https://github.com/<login>/brain-dogfood.git --description "Scratch brain for the mount checks."`.
+2. `bm unmount brain-dogfood`, then `bm mount https://github.com/<login>/brain-dogfood.git --json`.
+3. `bm mounts --json` and `bm doctor --json`.
+
+**Pass when:**
+- step 1 pushes one commit with the shared template to the GitHub repo;
+- step 2 clones it into `brains/brain-dogfood/` with `mode: read`, and the workspace commit "Mount brain-dogfood (read)" is on GitHub;
+- `mounts` lists it as published and cloned, with its description; `doctor` has 0 errors.
+
+### M2 Restore the workspace in a second folder
+
+**Steps:** with M1's mount in place, `git clone https://github.com/<login>/ai-workspace-mounts.git "<a new folder with a space>"`, then `bm init --json` there.
+
+**Pass when:**
+- the result has `mode: restore`, and every mount reports `cloned`;
+- `doctor` has 0 errors, and `git status` is clean;
+- the folder opens in Claude Code with the skills and in Obsidian as a vault.
+
+### M3 Obsidian and `.git/` (carried chunk 9 check)
+
+**Steps:** open `brains/` as an Obsidian vault and keep it open. `bm mount` a brain, wait for Obsidian to index it, then `bm unmount` it. Mount it again, and search Obsidian for a word that only appears inside `.git/` (for example the full hash of the brain's first commit).
+
+**Pass when:**
+- Obsidian shows no hits from `.git/`, and no `.git` files in its file explorer;
+- `unmount` deletes the folder while Obsidian is open (no "file in use" error on Windows).
+
+If `.git/` contents show up, the vault template adds `.git` to `userIgnoreFilters` (research note, "Consequence for brain-mesh").
 
 ## Run log
 
