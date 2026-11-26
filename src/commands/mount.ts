@@ -7,9 +7,9 @@ import type { CommandDef } from '../main.js';
 import { assertFreeId, brainIdOf, cloneBrain, removeFolder } from '../mount/clone.js';
 import { CliError, ErrorCode, ExitCode, type Warning } from '../output.js';
 import { renderWorkspace } from '../render/workspace.js';
-import { MeshConfigSchema, type Mount } from '../schemas/mesh.js';
+import type { Mount } from '../schemas/mesh.js';
 import { findWorkspaceRoot } from '../workspace/find.js';
-import { editMesh } from '../workspace/mesh-edit.js';
+import { editMesh, readMounts } from '../workspace/mesh-edit.js';
 import { WORKSPACE_CONFIG, commitPaths, pullPush } from '../workspace/repo.js';
 
 export interface MountInfo {
@@ -31,18 +31,6 @@ async function workspaceRoot(cwd: string): Promise<string> {
   const root = await findWorkspaceRoot(cwd);
   if (root === null) throw new CliError(ErrorCode.NoWorkspace, `no mesh.yaml found in ${cwd} or any parent folder`, ExitCode.Failure);
   return root;
-}
-
-async function readMounts(root: string): Promise<Mount[]> {
-  let raw: unknown;
-  try {
-    raw = parse(await readFile(join(root, 'mesh.yaml'), 'utf8'));
-  } catch (err) {
-    throw new CliError(ErrorCode.MeshInvalid, `mesh.yaml cannot be read: ${err instanceof Error ? firstLine(err.message) : String(err)}`);
-  }
-  const mesh = MeshConfigSchema.safeParse(raw);
-  if (!mesh.success) throw new CliError(ErrorCode.MeshInvalid, `mesh.yaml is invalid: ${mesh.error.issues[0]?.message ?? 'does not match the schema'}`);
-  return mesh.data.mounts;
 }
 
 /** The `description` of `brains/<id>/brain.yaml`; null when missing or unreadable. */

@@ -6,6 +6,7 @@ import { doctorCommand } from './doctor.js';
 import { initCommand } from './init.js';
 import { mountCommand, mountsCommand, unmountCommand } from './mount.js';
 import { searchCommand } from './search.js';
+import { syncCommand } from './sync.js';
 import { versionCommand } from './version.js';
 
 /** Every command, with the ones that talk to the git host on `host`. */
@@ -19,6 +20,7 @@ export function commandsFor(host: Host): readonly CommandDef[] {
     mountCommand({ host }),
     mountsCommand,
     unmountCommand,
+    syncCommand,
   ];
 }
 

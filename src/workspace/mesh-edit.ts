@@ -1,6 +1,6 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { isMap, isSeq, parseDocument, type Document, type YAMLMap, type YAMLSeq } from 'yaml';
+import { isMap, isSeq, parse, parseDocument, type Document, type YAMLMap, type YAMLSeq } from 'yaml';
 import { CliError, ErrorCode, ExitCode } from '../output.js';
 import { MeshConfigSchema, type MeshConfig, type Mount } from '../schemas/mesh.js';
 
@@ -60,4 +60,17 @@ export async function editMesh(root: string, change: (mounts: Mount[]) => Mount[
   const out = doc.toString({ lineWidth: 0 });
   await writeFile(path, crlf ? out.replace(/\n/g, '\r\n') : out, 'utf8');
   return next.data;
+}
+
+/** The mounts of `root/mesh.yaml`; throws `E_MESH_INVALID` when it cannot be read or fails the schema. */
+export async function readMounts(root: string): Promise<Mount[]> {
+  let raw: unknown;
+  try {
+    raw = parse(await readFile(join(root, 'mesh.yaml'), 'utf8'));
+  } catch (err) {
+    throw new CliError(ErrorCode.MeshInvalid, `mesh.yaml cannot be read: ${err instanceof Error ? err.message.trim().split('\n')[0]!.trim() : String(err)}`);
+  }
+  const mesh = MeshConfigSchema.safeParse(raw);
+  if (!mesh.success) throw new CliError(ErrorCode.MeshInvalid, `mesh.yaml is invalid: ${mesh.error.issues[0]?.message ?? 'does not match the schema'}`);
+  return mesh.data.mounts;
 }
