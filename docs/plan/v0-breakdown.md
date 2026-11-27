@@ -208,3 +208,16 @@ From the [chunk 9 plan](../superpowers/plans/2026-11-26-chunk-09-mount-lifecycle
   - `commit` reads `mesh.yaml` twice;
   - the dry run's `files` leave out regenerated files.
 - [ ] The contribute skill's override wording: one S2b run offered "keep it with a reason" for a real judgement; say plainly that only a false positive can be overridden.
+
+## Deferred minors from chunk 11
+
+From the [chunk 11 plan](../superpowers/plans/2026-11-27-chunk-11-upgrade.md) final review.
+
+- [ ] A kept `app.json`'s diff shows the raw seed, not what `--accept`'s merge would write; show `mergeJson(current, seed)`.
+- [ ] A non-upgrade render records the new seed's sha for an edited seed, so a kept seed isn't offered again until upstream changes it; keep the previous entry instead.
+- [ ] "Already on X" doesn't say that a pending commit was pushed.
+- [ ] Override detection compares only `SKILL.md`, not a skill's other files.
+- [ ] A dry run can still chmod an unchanged hook on POSIX (`makeExecutable` is not gated by `doWrite`).
+- [ ] A failed write is still reported as overwritten with `W_HAND_EDIT_OVERWRITTEN`.
+- [ ] If the commit fails after `setPin`, a re-run commits "from X to X"; take `from` from the render record.
+- [ ] `--accept ./brains/.obsidian/app.json` is a usage error; strip a leading `./`.
