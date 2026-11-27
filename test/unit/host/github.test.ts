@@ -179,7 +179,7 @@ describe('githubHost operations', () => {
 
   it('team owner', async () => {
     const team = (answer: RunResult, teamItself?: RunResult) =>
-      githubHost(stub({ [TEAM_REPO]: answer, ...(teamItself ? { 'api orgs/acme/teams/platform --method GET': teamItself } : {}) })).ownerStatus('@acme/platform', REPO);
+      githubHost(stub({ [TEAM_REPO]: answer, ...(teamItself ? { 'api orgs/acme/teams/platform --method GET': teamItself } : {}), 'api user/memberships/orgs/acme --method GET': json({ state: 'active' }) })).ownerStatus('@acme/platform', REPO);
     expect(await team(json({ permissions: { push: true, pull: true } }))).toBe('ok');
     expect(await team(json({ permissions: { push: false, pull: true } }))).toBe('no-write');
     expect(await team(http(404), http(404))).toBe('not-found');
@@ -187,6 +187,34 @@ describe('githubHost operations', () => {
     expect(await team(http(403))).toBe('unknown');
     const run = stub({ [TEAM_REPO]: json({ permissions: { push: true } }) });
     expect(await githubHost(run).ownerStatus('@acme/Platform', REPO)).toBe('ok');
+  });
+
+  describe('team owner edge cases', () => {
+    const TEAM = 'api orgs/acme/teams/platform --method GET';
+    const MEMBER = 'api user/memberships/orgs/acme --method GET';
+    const owner = (answers: Record<string, RunResult>) => githubHost(stub(answers)).ownerStatus('@acme/platform', REPO);
+
+    it('a team answer without permissions is unknown', async () => {
+      expect(await owner({ [TEAM_REPO]: json({}) })).toBe('unknown');
+    });
+
+    it('a bare HTTP status is read', async () => {
+      const bare: RunResult = { exitCode: 1, stdout: '', stderr: 'gh: HTTP 404' };
+      expect(await githubHost(stub({ 'api repos/acme/brain-x --method GET': bare })).permission(REPO)).toBe('none');
+    });
+
+    it("an outside collaborator's team is unknown", async () => {
+      expect(await owner({ [TEAM_REPO]: http(404), [TEAM]: http(404), [MEMBER]: http(404) })).toBe('unknown');
+    });
+
+    it("a member's missing team is not-found", async () => {
+      expect(await owner({ [TEAM_REPO]: http(404), [TEAM]: http(404), [MEMBER]: json({ state: 'active' }) })).toBe('not-found');
+    });
+
+    it('a pending or missing membership is unknown', async () => {
+      expect(await owner({ [TEAM_REPO]: http(404), [TEAM]: http(404), [MEMBER]: json({ state: 'pending' }) })).toBe('unknown');
+      expect(await owner({ [TEAM_REPO]: http(404), [TEAM]: http(404), [MEMBER]: http(403) })).toBe('unknown');
+    });
   });
 
   it('user owner', async () => {

@@ -1,4 +1,5 @@
 import type { Host, OwnerStatus, RepoRef } from '../host/host.js';
+import { mapLimit } from '../map-limit.js';
 import { CliError, type Warning } from '../output.js';
 import { Owner } from '../schemas/common.js';
 import { isNetworkUrl } from '../workspace/url.js';
@@ -9,6 +10,8 @@ import { wsPath } from './layout.js';
 /** Host failures that mean "cannot ask now", not a bug: doctor skips its network checks. */
 const SKIP_CODES = new Set(['E_OFFLINE', 'E_GH_AUTH', 'E_GH_MISSING', 'E_HOST']);
 const WRITE = new Set(['admin', 'maintain', 'write']);
+/** Owner lookups in flight at once; each is one or two GitHub API calls. */
+const OWNER_CONCURRENCY = 4;
 const SKIPPED = 'network checks (owners, push rights) skipped';
 
 interface Target {
@@ -70,13 +73,13 @@ export async function hostChecks(
         // Without write access GitHub hides who can write, so owner lookups would only give false findings.
         continue;
       }
-      for (const [path, owner] of ownersOf(b)) {
+      const owners = ownersOf(b);
+      const todo = [...new Set(owners.map(([, owner]) => owner))].filter((owner) => !statuses.has(`${owner}|${full}`));
+      const looked = await mapLimit(todo, OWNER_CONCURRENCY, (owner) => host.ownerStatus(owner, repo));
+      todo.forEach((owner, i) => statuses.set(`${owner}|${full}`, looked[i]!));
+      for (const [path, owner] of owners) {
         const key = `${owner}|${full}`;
-        let status = statuses.get(key);
-        if (status === undefined) {
-          status = await host.ownerStatus(owner, repo);
-          statuses.set(key, status);
-        }
+        const status = statuses.get(key)!;
         if (status === 'not-found') {
           findings.push(finding('owner-not-found', { brain: b.id, path, message: `owner ${owner} does not exist on github.com, or you cannot see it` }));
         } else if (status === 'no-write') {

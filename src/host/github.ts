@@ -108,7 +108,7 @@ export function githubHost(run: GhRunner = runGh): Host {
     const why = ghFailure(r);
     if (why === 'offline') throw offlineError(r);
     if (why === 'auth') throw authError();
-    const m = /\(HTTP (\d{3})\)/.exec(r.stderr);
+    const m = /\bHTTP (\d{3})\b/.exec(r.stderr);
     if (m !== null) return { status: Number(m[1]), json: json() };
     throw new CliError(ErrorCode.Host, `gh api ${path} failed: ${firstLine(r.stderr || r.stdout)}`);
   }
@@ -118,6 +118,12 @@ export function githubHost(run: GhRunner = runGh): Host {
     const r = await api(path);
     if (r.status === 200) return 'no-write';
     return r.status === 404 ? 'not-found' : 'unknown';
+  }
+
+  /** True when the caller is an active member of `org`; GitHub hides an org's teams from everyone else. */
+  async function memberOf(org: string): Promise<boolean> {
+    const r = await api(`user/memberships/orgs/${org}`);
+    return r.status === 200 && (r.json as { state?: unknown } | null)?.state === 'active';
   }
 
   return {
@@ -179,8 +185,12 @@ export function githubHost(run: GhRunner = runGh): Host {
         // Slugs are lowercase; CODEOWNERS matches teams case-insensitively (plan decision 5).
         const [org, slug] = [team[1]!, team[2]!.toLowerCase()];
         const r = await api(`orgs/${org}/teams/${slug}/repos/${full}`, { accept: 'application/vnd.github.v3.repository+json' });
-        if (r.status === 200) return canWrite(r.json) ? 'ok' : 'no-write';
-        return r.status === 404 ? existsOr404(`orgs/${org}/teams/${slug}`) : 'unknown';
+        // A 200 without a permissions object says nothing about write access.
+        if (r.status === 200) return Object.keys(permissionsOf(r.json)).length === 0 ? 'unknown' : canWrite(r.json) ? 'ok' : 'no-write';
+        if (r.status !== 404) return 'unknown';
+        const status = await existsOr404(`orgs/${org}/teams/${slug}`);
+        // Outside collaborators can't see the org's teams: only a member may call a team missing (chunk 13, decision 3).
+        return status === 'not-found' && !(await memberOf(org)) ? 'unknown' : status;
       }
       const login = owner.replace(/^@/, '');
       const r = await api(`repos/${full}/collaborators/${login}/permission`);
