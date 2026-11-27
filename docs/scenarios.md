@@ -104,7 +104,7 @@ After each scenario, check the result with `git -C "$base/workspace" log --stat 
 
 ## Mounts
 
-These run by hand against github.com, not in the scenario setup above, in a scratch workspace made by the version under test: restore refuses a workspace pinned to another version. `bm` stands for `npx -y brain-mesh-ai-workspace@<version>`. Make the workspace with `bm init --name ai-workspace-mounts` in an empty folder whose path contains a space. Afterwards, delete both scratch repos with `gh repo delete <login>/brain-dogfood` and `gh repo delete <login>/ai-workspace-mounts`.
+These run by hand against github.com, not in the scenario setup above, in a scratch workspace made by the version under test: restore refuses a workspace pinned to another version. `bm` stands for `npx -y brain-mesh-ai-workspace@<version>`; in PowerShell define it as `function bm { & npx.cmd -y brain-mesh-ai-workspace@<version> @args }` (a function that calls plain `npx` reaches `npx.ps1`, which drops the arguments, and brain-mesh answers "missing command"). Make the workspace with `bm init --name ai-workspace-mounts` in an empty folder whose path contains a space. Afterwards, delete both scratch repos with `gh repo delete <login>/brain-dogfood` and `gh repo delete <login>/ai-workspace-mounts`.
 
 ### M1 Mount a real shared brain read-only
 
@@ -153,3 +153,6 @@ If `.git/` contents show up, the vault template adds `.git` to `userIgnoreFilter
 | 2026-11-25 | 0.1.0-alpha.2 | P4 | pass | Moved into `sources/` with `type: source`; doctor 0 errors; pushed. |
 | 2026-11-25 | 0.1.0-alpha.2 | P5 | pass | Answered 3 days from the inbox decision, with the filed note's 7 days beside it; no change. |
 | 2026-11-25 | 0.1.0-alpha.2 | P6 | pass | Retried the search with fewer words, named `@rwifire`; no change. |
+| 2026-11-27 | 0.1.0-alpha.4 | M1 | pass | `brain new` pushed one commit with the template (folder skeleton included); unmount and read mount pushed; `mounts` published and cloned with its description; doctor 0 errors, 0 warnings. |
+| 2026-11-27 | 0.1.0-alpha.4 | M2 | pass | Restore: `mode: restore`, `brain-dogfood` cloned, sync pushed, doctor 0/0, `git status` clean; Claude Code shows the ask, capture and ingest skills. |
+| 2026-11-27 | 0.1.0-alpha.4 | M3 | pass | With Obsidian open on `brains/`: unmount, mount, unmount all `removed: true` and pushed, no warnings; searching Obsidian for the clone's HEAD hash found nothing. Ran after M2 had synced from the other folder; every push went through. |

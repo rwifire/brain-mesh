@@ -70,7 +70,7 @@ Open points from the [chunk 1 research](../research/2026-11-chunk-01-research.md
 - **Chunk 7 (done):** the dogfood pin is a published alpha: 0.1.0-alpha.2 on npm under `next`, as `brain-mesh-ai-workspace` (npm refused `brain-mesh` as too similar to `brainmesh`); the command stays `brain-mesh`. The personal scenarios pass on Claude Code 2.1.325 ([run log](../scenarios.md#run-log)).
 - **Chunk 8 (done):** logged-out and offline `gh` behaviour, checked with the real gh 2.100.0 and pinned in tests; the adapter passes against a sandbox repo for permissions, user owners and PRs. See the [chunk 8 checks](../research/2026-11-chunk-01-research.md#chunk-8-checks).
 - **Chunk 10:** re-check the team-repo permission endpoint (`Accept: application/vnd.github.v3.repository+json`) and teams as seen by an outside collaborator, with `BRAIN_MESH_SANDBOX_TEAM` set against the sandbox shared brain; the chunk 8 sandbox account had no org team.
-- **Chunk 9:** with Obsidian open, mount and unmount a brain and confirm `.git/` contents don't show up in search.
+- **Chunk 9 (done):** with Obsidian open, a mounted brain's `.git/` contents don't show up in search, and unmount deletes the folder on Windows; see the [chunk 9 checks](../research/2026-11-chunk-01-research.md#chunk-9-checks).
 
 ## Moved from chunk 3
 
@@ -175,3 +175,19 @@ From the [chunk 8 plan](../superpowers/plans/2026-11-25-chunk-08-host-adapter.md
 - [ ] With `gh` missing on non-English Windows, doctor's `W_NETWORK_SKIPPED` quotes cmd's localized text instead of "gh is not installed"; probe `gh --version` once before the first API call.
 - [ ] Outside collaborators can't see the org's teams, so every team owner gives `owner-not-found`; confirm in the sandbox run, then return `unknown`.
 - [ ] Owner lookups run one after another (about 0.3–0.5 s each); run them with a bounded `mapLimit`.
+
+## Deferred minors from chunk 9
+
+From the [chunk 9 plan](../superpowers/plans/2026-11-26-chunk-09-mount-lifecycle.md) final review.
+
+- [ ] `unmount` misses untracked files when `status.showUntrackedFiles=no`, and stash entries; use `--untracked-files=all` and check `git stash list`.
+- [ ] The `commit` field of mount, unmount and brain JSON is the sha from before the rebase; read HEAD after `pullPush`.
+- [ ] A `brain new <url>` that fails after the push removes the local brain without saying the remote holds it; say to `mount <url> --mode contribute`.
+- [ ] `brain publish` on a missing folder, or one without its own `.git`, gives a misleading git error; check `brains/<id>/.git` first.
+- [ ] A failed `mount` restores `mesh.yaml` but leaves re-rendered `AGENTS.md` and `.gitignore`; re-render after the rollback.
+- [ ] SSH and Git Credential Manager prompts can still block network calls; also set `GCM_INTERACTIVE=never` and `ssh -o BatchMode=yes`.
+- [ ] Brains made by `brain new`/`brain publish` have no `origin/HEAD`, so `sync`'s branch check never fires for them; run `git remote set-head origin -a` after the push.
+- [ ] A user's own uncommitted `mesh.yaml` or `.gitignore` edit goes into the command's commit; document it or stash it.
+- [ ] With no upstream, `sync` says "Workspace pulled; not pushed."
+- [ ] If removing a failed clone also fails, the original error is replaced by `E_INTERNAL`; keep the original.
+- [ ] Untested: a commit or push failure after the clone, an unreachable URL through `mount`, a relative URL in `brain publish`.

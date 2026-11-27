@@ -218,3 +218,15 @@ The team case was skipped: the account has no org team. So whether the team-repo
 
 **Source:** `BRAIN_MESH_SANDBOX_REPO=rwifire/brain-mesh-sandbox npx vitest run test/e2e/github-sandbox.test.ts` → 3 passed, 1 skipped (team owners), 12.5 s · **Checked:** 2026-11-26, gh 2.100.0, Windows
 **Consequence for brain-mesh:** The adapter is done for user owners, permissions and PRs. The team check moves to chunk 10, which runs against a sandbox shared brain owned by a team. It sets `BRAIN_MESH_SANDBOX_TEAM` there. If GitHub answers 204 without a body, the deferred minor about permission-less 200 answers becomes a fix.
+
+## Chunk 9 checks
+
+### Obsidian and a brain's `.git/` folder
+**Answer:** Obsidian does not index a mounted brain's `.git/`. With the vault open on `brains/`, a search for the clone's HEAD commit hash (text that exists only inside `.git/`) found nothing. Unmounting while Obsidian was open deleted the folder every time on Windows; no file was held open.
+**Source:** scenarios M1–M3 in [docs/scenarios.md](../scenarios.md#mounts) against github.com · **Checked:** 2026-11-27, 0.1.0-alpha.4, Windows
+**Consequence for brain-mesh:** The vault template needs no `userIgnoreFilters` entry for `.git`. `unmount` still keeps a folder it cannot delete, with `W_FOLDER_KEPT`, for editors that do hold files open.
+
+### Mount, restore and sync against github.com
+**Answer:** `brain new` on an empty GitHub repo, `unmount`, a read `mount`, and `init` restore in a second clone all work end to end; each workspace change was committed and pushed, and the second folder's sync did not block the first folder's later pushes.
+**Source:** the same run · **Checked:** 2026-11-27, 0.1.0-alpha.4, Windows
+**Consequence for brain-mesh:** None. In PowerShell, a function wrapping plain `npx` drops its arguments (`npx.ps1` reads the calling line); the scenarios now define `bm` with `npx.cmd`. The agents call `npx` directly and are not affected.
