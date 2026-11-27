@@ -27,6 +27,8 @@ export const ErrorCode = {
   PinMismatch: 'E_PIN_MISMATCH',
   RepoName: 'E_REPO_NAME',
   AlreadyPublished: 'E_ALREADY_PUBLISHED',
+  ReadOnly: 'E_READ_ONLY',
+  DoctorErrors: 'E_DOCTOR_ERRORS',
 } as const;
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];
 
