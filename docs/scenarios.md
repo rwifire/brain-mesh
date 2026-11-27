@@ -258,6 +258,27 @@ An override of a real false positive (its reason in the PR body under "People-po
 - it has a `DUPLICATE` line for `flaky-test-quarantine.md` and `quarantining-flaky-tests.md`;
 - no file changes in the workspace.
 
+## Upgrade
+
+### U1 Upgrade the dogfood workspace
+
+Runs by hand in the dogfood workspace, from its current pin to the new version (`<new>`). Use a second clone of the same workspace repo for the last step.
+
+**Prompt:** none (CLI only).
+
+**Steps:**
+1. In the dogfood workspace: `npx.cmd -y brain-mesh-ai-workspace@<new> upgrade --dry-run --json` in PowerShell, or `npx -y brain-mesh-ai-workspace@<new> upgrade --dry-run --json` in bash.
+2. The same without `--dry-run`. If step 1 listed a template file as `kept` and you want the new one, add `--accept <path>`.
+3. `git show --stat HEAD`, `git status`, and `git diff HEAD~1 --stat -- .local tools brains`.
+4. In a second clone, still on the old pin: `npx.cmd -y brain-mesh-ai-workspace@<old> sync --json`, then `npx.cmd -y brain-mesh-ai-workspace@<new> init --json`.
+
+**Pass when:**
+- the dry run lists the files it would re-render, with diffs for hand edits, template files and overridden skills, and changes nothing (`git status` is clean afterwards);
+- the upgrade bumps the pin in `mesh.yaml` and re-renders the skills (the `contribute` skill appears when coming from 0.1.0-alpha.4 or older). It commits only `mesh.yaml`, `AGENTS.md`, `.gitignore`, `.gitattributes` and `brains/.obsidian/app.json`, and pushes;
+- `git status` is clean and `.local/`, `tools/` and `brains/` are unchanged;
+- a hand-edited `brains/.obsidian/app.json` (Obsidian adds its own keys) is `kept` with a diff unless accepted;
+- in the second clone, `sync` warns `W_PIN_CHANGED` and renders nothing, and `init` with the new version re-renders it.
+
 ## Run log
 
 | Date | Version | Scenario | Result | Notes |

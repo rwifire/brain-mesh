@@ -74,3 +74,11 @@ describe('gitignoreBlock', () => {
       '.claude/agents/x.md\n.claude/skills/ask/\n.mesh/\nbrains/brain-handbook/\nbrains/brain-ideas/\nbrains/brain-team-platform/\nnode_modules/\n',
     ));
 });
+
+describe('the workspace AGENTS.md template', () => {
+  it('says how to upgrade', async () => {
+    const text = await template();
+    expect(text).toContain('upgrade --dry-run --json');
+    expect(text).toContain('--accept <path>');
+  });
+});
