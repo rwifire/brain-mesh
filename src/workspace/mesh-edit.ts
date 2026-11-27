@@ -62,6 +62,26 @@ export async function editMesh(root: string, change: (mounts: Mount[]) => Mount[
   return next.data;
 }
 
+/**
+ * Sets the pinned core version (`brain_mesh`) in `root/mesh.yaml`, keeping comments, header and
+ * line endings. Throws `E_MESH_INVALID`, without writing, when the file or the result fails the schema.
+ */
+export async function setPin(root: string, version: string): Promise<MeshConfig> {
+  const path = join(root, 'mesh.yaml');
+  const text = await readFile(path, 'utf8');
+  const crlf = text.includes('\r\n');
+  const doc = parseDocument(text.replace(/\r\n/g, '\n'));
+  if (doc.errors.length > 0) throw invalid(doc.errors[0]!.message.split('\n')[0]!);
+  const current = MeshConfigSchema.safeParse(doc.toJS());
+  if (!current.success) throw invalid(current.error.issues[0]?.message ?? 'does not match the schema');
+  const next = MeshConfigSchema.safeParse({ ...current.data, brain_mesh: version });
+  if (!next.success) throw invalid(next.error.issues[0]?.message ?? 'does not match the schema');
+  doc.set('brain_mesh', version);
+  const out = doc.toString({ lineWidth: 0 });
+  await writeFile(path, crlf ? out.replace(/\n/g, '\r\n') : out, 'utf8');
+  return next.data;
+}
+
 /** `root/mesh.yaml`; throws `E_MESH_INVALID` when it cannot be read or fails the schema. */
 export async function readMesh(root: string): Promise<MeshConfig> {
   let raw: unknown;

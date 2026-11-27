@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { editMesh } from '../../../src/workspace/mesh-edit.js';
+import { editMesh, setPin } from '../../../src/workspace/mesh-edit.js';
 import { read, write } from '../../helpers/cli.js';
 import { tempDir } from '../../helpers/fixtures.js';
 
@@ -71,6 +71,22 @@ describe('editMesh', () => {
 
     const dir = await root();
     await expect(editMesh(dir, (m) => [...m, { id: 'brain-x', mode: 'write' as 'read' }])).rejects.toMatchObject({ code: 'E_MESH_INVALID' });
+    expect(await read(dir, 'mesh.yaml')).toBe(MESH);
+  });
+});
+
+describe('setPin', () => {
+  it('changes only the pin, keeping comments and line endings', async () => {
+    const crlf = MESH.replace(/\n/g, '\r\n');
+    const dir = await root(crlf);
+    const mesh = await setPin(dir, '0.5.0');
+    expect(mesh.brain_mesh).toBe('0.5.0');
+    expect(await read(dir, 'mesh.yaml')).toBe(crlf.replace('brain_mesh: 0.4.2', 'brain_mesh: 0.5.0'));
+  });
+
+  it('refuses an empty version without writing', async () => {
+    const dir = await root();
+    await expect(setPin(dir, '')).rejects.toMatchObject({ code: 'E_MESH_INVALID' });
     expect(await read(dir, 'mesh.yaml')).toBe(MESH);
   });
 });
