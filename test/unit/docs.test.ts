@@ -43,6 +43,12 @@ describe('docs', () => {
     for (const r of ['"Bash(npx -y', '"PowerShell(npx -y', '"PowerShell(npx.cmd -y']) expect(rules.some((l) => l.includes(r)), r).toBe(true);
   });
 
+  it('the README installs the release', async () => {
+    const text = await readFile(join(ROOT, 'README.md'), 'utf8');
+    expect(text).toContain('npx -y brain-mesh-ai-workspace@latest init');
+    expect(text).not.toContain('@next');
+  });
+
   it('claude code rules need a trusted folder', async () => {
     const text = await readFile(join(ROOT, 'docs', 'getting-started.md'), 'utf8');
     const approve = text.slice(text.indexOf('## 4.'), text.indexOf('## 5.'));
