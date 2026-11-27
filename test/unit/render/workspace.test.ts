@@ -161,6 +161,19 @@ describe('renderWorkspace', () => {
     expect((await read(root, 'AGENTS.md')).endsWith('<!-- from .local/team.md -->\nTeam rule.\n')).toBe(true);
   });
 
+  it('a CRLF .local file renders LF', async () => {
+    const crlf = await fullWorkspace();
+    await writeFiles(crlf, { '.local/team.md': 'Team rule.\r\nSecond line.\r\n' });
+    await render(crlf);
+    const lf = await fullWorkspace();
+    await writeFiles(lf, { '.local/team.md': 'Team rule.\nSecond line.\n' });
+    await render(lf);
+    const agents = await read(crlf, 'AGENTS.md');
+    expect(agents.includes('\r')).toBe(false);
+    expect(agents).toBe(await read(lf, 'AGENTS.md'));
+    expect(await read(crlf, RECORD_PATH)).toBe(await read(lf, RECORD_PATH));
+  });
+
   it('never writes through a symlink', async (ctx) => {
     const root = await fullWorkspace();
     const outside = await tempDir();

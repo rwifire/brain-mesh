@@ -15,10 +15,14 @@ export function humanize(stem: string): string {
 
 /** One MOC line linking from the brain-relative folder `fromDir` to the brain-relative `target`. */
 export function mocEntry(fromDir: string, target: string, title: string, summary: unknown): string {
-  const rel = fromDir === '' ? target : posix.relative(fromDir, target);
+  const raw = fromDir === '' ? target : posix.relative(fromDir, target);
+  // `%`, `#` and `?` would end or garble the path, so they are percent-encoded (`%` first); the
+  // link resolver decodes them. Spaces and parentheses keep the angle brackets.
+  const rel = raw.replace(/%/g, '%25').replace(/#/g, '%23').replace(/\?/g, '%3F');
   const link = /[\s()<>]/.test(rel) ? `<${rel}>` : rel;
+  const label = title.replace(/[[\]]/g, (c) => `\\${c}`);
   const text = typeof summary === 'string' ? summary.replace(/\s+/g, ' ').trim() : '';
-  return `- [${title}](${link})${text === '' ? '' : ` — ${text}`}\n`;
+  return `- [${label}](${link})${text === '' ? '' : ` — ${text}`}\n`;
 }
 
 interface Entry {
