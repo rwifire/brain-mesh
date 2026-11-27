@@ -2,7 +2,7 @@
 
 Spec 10: skills and agents are checked by hand against a fixture workspace before each release, on Claude Code (the reference client); Copilot gets a smoke test. This file holds the scenarios, how to run them and a log of runs.
 
-Chunk 7 adds the personal-brain scenarios (P1–P6) and chunk 9 the mount checks (M1–M3). The shared-brain skill scenarios arrive with chunk 10, and chunk 12 finalises the list.
+Chunk 7 adds the personal-brain scenarios (P1–P6), chunk 9 the mount checks (M1–M3) and chunk 10 the shared-brain scenarios (S1–S5). Chunk 12 finalises the list.
 
 ## Setup
 
@@ -136,6 +136,89 @@ These run by hand against github.com, not in the scenario setup above, in a scra
 - `unmount` deletes the folder while Obsidian is open (no "file in use" error on Windows).
 
 If `.git/` contents show up, the vault template adds `.git` to `userIgnoreFilters` (research note, "Consequence for brain-mesh").
+
+## Shared brains
+
+These run against github.com for `brain-sandbox` and against local bare repos for everything else. They need, once:
+
+- an empty repo `wildfeuer-labs/brain-sandbox`, and a team `wildfeuer-labs/brain-sandbox-writers` with write access to it that you are a member of (the seed's area owner);
+- a `gh` login with push rights on that repo.
+
+### Shared setup
+
+`bm` is the same as in **Mounts** (`npx.cmd` in PowerShell). `<repo>` is this repository's folder.
+
+```bash
+base="$(mktemp -d)/shared run"; mkdir -p "$base/workspace"
+git init --bare -q -b main "$base/remote.git"
+git init --bare -q -b main "$base/brain-handbook.git"
+cd "$base/workspace"
+bm init --remote "$base/remote.git" --json
+cp -r <repo>/test/fixtures/scenarios/personal/. brains/personal/
+cp <repo>/test/fixtures/scenarios/shared/inbox/2026-11-26-ci-retro.md brains/personal/inbox/
+bm doctor personal --fix --json && bm commit -m "Seed scenario notes" --json
+
+bm brain new brain-sandbox --description "Scratch shared brain for the platform team's CI and release notes." --owner @wildfeuer-labs/brain-sandbox-writers --json
+cp -r <repo>/test/fixtures/scenarios/shared/brain-sandbox/. brains/brain-sandbox/
+bm doctor brain-sandbox --fix --json && bm commit brain-sandbox -m "Seed" --json      # route: direct
+bm brain publish brain-sandbox https://github.com/wildfeuer-labs/brain-sandbox.git --json
+
+bm brain new brain-handbook --description "Company-wide handbook: how releases and other shared processes work." --json
+cp -r <repo>/test/fixtures/scenarios/shared/brain-handbook/. brains/brain-handbook/
+bm doctor brain-handbook --fix --json && bm commit brain-handbook -m "Seed" --json
+bm brain publish brain-handbook "$base/brain-handbook.git" --json
+bm unmount brain-handbook --json && bm mount "$base/brain-handbook.git" --json    # mode: read
+```
+
+In PowerShell, set `$base = Join-Path $env:TEMP "shared run $(Get-Random)"`, create the folders with `New-Item -ItemType Directory -Force`, use `Copy-Item -Recurse "<repo>\test\fixtures\scenarios\shared\brain-sandbox\*" brains\brain-sandbox\` for `cp -r`, and `;` with `if ($?)` in place of `&&`.
+
+Run the prompts as in **Setup**, with `Agent` added to `--allowedTools` so the skills can call the reviewer agents. Before each scenario, close any PR the previous one left open and delete its `mesh/…` branch on GitHub (`gh pr close <n> --delete-branch`). After S1 and S2, reset the personal brain as P4 says if the inbox item is gone.
+
+### S1 Ingest into a shared brain via PR
+
+**Prompt:** `Ingest inbox/2026-11-26-ci-retro.md.` Then `--continue` with `Approved, go ahead. Open the PR.`
+
+**Pass when:**
+- the proposal names `brain-sandbox` as the target for the arm64 decision, with a quote or timestamp per item;
+- a PR is open on `wildfeuer-labs/brain-sandbox` from `mesh/<login>/…`, with the new notes and the regenerated `README.md`/`index.md` lists, and a body saying why;
+- `git -C brains/brain-sandbox status` is clean and the clone is on `main`;
+- the inbox item is gone in one pushed personal commit whose message names the PR URL.
+
+### S2 People-policy flag
+
+**Prompt:** `Add a note to brain-sandbox: Ben decided to move the builds to the arm64 pool, but he was careless with the rollout plan.` Then `--continue` with `Go ahead.`; then, in a second run, `--continue` with `Keep it as is: the rollout plan was really missing, I take responsibility for the wording.`
+
+**Pass when:**
+- the people-policy-reviewer flags "careless" (a `FLAG` line with path and quote), and no PR is opened while it stands;
+- the decision ("Ben decided …") is not flagged;
+- after the override, the PR description has a "People-policy overrides:" list with the passage and the user's reason.
+
+### S3 Cross-brain ask
+
+**Prompt:** `How long do runner cache layers live, and why?`
+
+**Pass when:**
+- the answer uses `brain-sandbox/areas/ci/cache-ttl-decision.md` and the personal `areas/ci/runner-cache-strategy.md`, with workspace-relative links, and names both brains as searched;
+- it gives 7 days as the newer decision and notes the older 14-day note;
+- it mentions `brain-handbook` only if it is relevant, and then as mounted read-only;
+- nothing changes.
+
+### S4 Read mount respected
+
+**Prompt:** `Fix the release process note in brain-handbook: step 4 should say to announce in the releases channel.`
+
+**Pass when:**
+- the agent declines to edit `brain-handbook` because it is mounted `read`, and offers a personal note (or asking the owner) instead;
+- `git -C brains/brain-handbook status` is clean and no commit is made there.
+
+### S5 Consistency review
+
+**Prompt:** `Use the consistency-reviewer agent to check brain-sandbox's CI area.`
+
+**Pass when:**
+- the report has a `CONTRADICTION` line for `runner-cache-retention.md` (14 days) against `cache-ttl-decision.md` (7 days), naming `cache-ttl-decision.md` as newer;
+- it has a `DUPLICATE` line for `flaky-test-quarantine.md` and `quarantining-flaky-tests.md`;
+- no file changes in the workspace.
 
 ## Run log
 

@@ -379,7 +379,7 @@ The CLI holds all deterministic logic so Claude and Copilot call the same comman
 | Command | Does | Phase |
 | --- | --- | --- |
 | `init [--remote <url> \| --name <repo>]` | New: create workspace, personal brain and private workspace repo. Existing `mesh.yaml`: restore (re-render, enable hook, `sync`). | v0 |
-| `commit [brain] --message <text>` | Commit the personal brain's changes only, pull with rebase, push (7.2). Other changes in the workspace stay as they are. | v0 |
+| `commit [brain] --message <text>` | Commit a brain's changes by the route of 7.2 (personal: commit, rebase, push; shared: PR, or a direct commit while unpublished; `read`: refused). Other changes in the workspace stay as they are. | v0 |
 | `mount <git-url> [--mode read\|contribute]` | Clone into `brains/<id>/`, record in `mesh.yaml`, regenerate instructions. `contribute` is refused without push rights. | v0 |
 | `unmount <id>` | Remove the clone and the `mesh.yaml` entry. | v0 |
 | `mounts` | List mounts with mode, path, description and published state. | v0 |

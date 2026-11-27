@@ -41,6 +41,8 @@ Personal brain plus one shared brain, PRs through GitHub.
 | 9 | **Mount lifecycle.** `mount`, `unmount`, `mounts`, `sync` (incl. cloning missing mounts), `brain new` (URL and local), `brain publish`, `init` restore. | Cloning the dogfood workspace on a second machine and running `init` restores it fully. |
 | 10 | **Contribute flow.** Branch → PR → back to default; `contribute` skill; people-policy check (deterministic + reviewer agent); consistency-reviewer; cross-brain `search`. | The shared-brain scenarios of the checklist pass on Claude Code against the sandbox shared brain. |
 
+Chunk 10 status: `commit <brain>` routes (PR, direct, refused), the `contribute` skill, both reviewer agents and scenarios S1–S5 are in; the S1–S5 run against `wildfeuer-labs/brain-sandbox` and the team check are pending (plan Task 6).
+
 ## Milestone C — Pilot-ready
 
 | # | Chunk | Done when |
