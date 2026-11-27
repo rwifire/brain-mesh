@@ -233,3 +233,16 @@ From the [chunk 12 plan](../superpowers/plans/2026-11-27-chunk-12-release.md) fi
 - [ ] `init` in restore mode warms the old pin when the pull brought a pin change.
 - [ ] The docs link test skips `docs/plan`, `docs/superpowers` and `GLOSSARY.md`.
 - [ ] `W_NPX_WARM_FAILED` quotes execa's first line, not npm's reason.
+
+## Deferred minors from chunk 13
+
+From the [chunk 13 plan](../superpowers/plans/2026-11-27-chunk-13-pilot-hardening.md) final review.
+
+- [ ] A PR made only of local commits gets an extra empty commit titled with the message; skip it and report the last cherry-picked sha.
+- [ ] The org membership lookup behind a missing team isn't cached per org.
+- [ ] A secret team still gives `owner-not-found` to an org member outside it; say "does not exist, or is secret".
+- [ ] `search` misses a closing fence longer than the opening one, and fences indented by 1–3 spaces.
+- [ ] MOC labels ending in a backslash, and `<` or `>` inside an angle-bracket link, still break the entry.
+- [ ] A failed personal commit also unstages personal changes the user had staged before.
+- [ ] `mapLimit` keeps calling `gh` after one owner lookup has failed.
+- [ ] A merge-only clone now gets the merge refusal instead of "nothing to commit".
