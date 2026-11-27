@@ -12,6 +12,18 @@ export async function hasLocalCommits(dir: string): Promise<boolean> {
   return r.exitCode === 0 && Number(r.stdout.trim()) > 0;
 }
 
+/** Paths the clone's local commits change against its upstream (brain-relative POSIX); [] without one. */
+export async function localCommitFiles(dir: string): Promise<string[]> {
+  const r = await git(dir, ['diff', '--name-only', '-z', '@{u}...HEAD']);
+  return r.exitCode === 0 ? r.stdout.split('\0').filter((f) => f !== '') : [];
+}
+
+/** True when `ref..HEAD` holds a merge commit; a merge's own content can't be cherry-picked into a PR. */
+export async function hasMergesSince(dir: string, ref: string): Promise<boolean> {
+  const r = await git(dir, ['rev-list', '--merges', '--count', `${ref}..HEAD`]);
+  return r.exitCode === 0 && Number(r.stdout.trim()) > 0;
+}
+
 /** Changed paths of the git repo `dir` (brain-relative POSIX), including untracked files; a rename gives its new path. */
 export async function brainChanges(dir: string): Promise<string[]> {
   const out = await gitOk(dir, ['status', '--porcelain', '-z', '--untracked-files=all']);

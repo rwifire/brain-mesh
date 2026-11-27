@@ -6,7 +6,7 @@ import type { Host } from '../host/host.js';
 import { checkPushRights } from '../mount/rights.js';
 import { CliError, ErrorCode, type Warning } from '../output.js';
 import { loadWorkspace } from '../workspace/load.js';
-import { assertGate, brainChanges, hasLocalCommits } from './gate.js';
+import { assertGate, brainChanges, hasLocalCommits, hasMergesSince, localCommitFiles } from './gate.js';
 import { prSlug } from './slug.js';
 
 const firstLine = (s: string) => s.trim().split('\n')[0]!.trim();
@@ -61,16 +61,26 @@ export async function contributePr(o: {
   const { root, id, host } = o;
   const dir = join(root, 'brains', id);
   const warnings: Warning[] = [];
-  const files = await brainChanges(dir);
+  const uncommitted = await brainChanges(dir);
+  // The contribution is the uncommitted changes plus the local commits; the skill's reviewer reads all of them.
+  const files = [...new Set([...uncommitted, ...(await localCommitFiles(dir))])].sort();
   const result: CommitData = { brain: id, route: 'pr', committed: false, commit: null, files, pushed: false, branch: null, pr: null, dryRun: o.dryRun };
-  if (files.length === 0 && !(await hasLocalCommits(dir))) return { ...result, warnings };
+  if (uncommitted.length === 0 && !(await hasLocalCommits(dir))) return { ...result, warnings };
+  const merges = (base: string) =>
+    new CliError(
+      ErrorCode.Git,
+      `brains/${id}/ has merge commits that are not on ${base}, and a pull request can't carry them; run git rebase ${base} in brains/${id}/ first, then commit again`,
+    );
 
   const repo = host.repoOf(o.url);
   if (repo === null) {
     throw new CliError(ErrorCode.NotSupported, `${id} is published at ${o.url}, which is not on github.com; pull requests can only be opened there`);
   }
   const wanted = `mesh/${o.user}/${prSlug(o.message)}`;
-  if (o.dryRun) return { ...result, branch: wanted, warnings };
+  if (o.dryRun) {
+    if (await hasMergesSince(dir, '@{u}')) throw merges('its upstream');
+    return { ...result, branch: wanted, warnings };
+  }
 
   await checkPushRights(host, o.url, warnings, RIGHTS_HINT);
   const base = await remoteDefault(dir, id);
@@ -81,6 +91,7 @@ export async function contributePr(o: {
   }
   const fetch = await git(dir, ['fetch', '-q', 'origin'], { network: true });
   if (fetch.exitCode !== 0) throw new CliError(ErrorCode.Git, `could not fetch ${o.url}: ${firstLine(fetch.stderr)}`);
+  if (await hasMergesSince(dir, `origin/${base}`)) throw merges(`origin/${base}`);
   const branch = await freeBranch(dir, wanted);
   // Merges and commits whose patch is already upstream are left out: they cannot be cherry-picked.
   const localCommits = (await gitOk(dir, ['rev-list', '--reverse', '--no-merges', '--cherry-pick', '--right-only', `origin/${base}...HEAD`]))
@@ -89,7 +100,7 @@ export async function contributePr(o: {
 
   // From here on the clone changes; `restore` puts it back exactly as it was.
   // A clean tree (local commits only) has nothing to stash.
-  const stashed = files.length > 0;
+  const stashed = uncommitted.length > 0;
   if (stashed) await gitOk(dir, ['stash', 'push', '-q', '-u', '-m', STASH_MESSAGE]);
   /** Puts the clone back; returns git's reason when the stash could not be popped, else null. */
   const restore = async (): Promise<string | null> => {
