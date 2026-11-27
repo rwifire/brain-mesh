@@ -1,6 +1,5 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { Command } from 'commander';
 import { parse } from 'yaml';
 import { describe, expect, it } from 'vitest';
 import { splitFrontmatter } from '../../../src/brain/frontmatter.js';
@@ -8,28 +7,11 @@ import { defaultCommands } from '../../../src/commands/index.js';
 import { packageCore, readSkills } from '../../../src/render/core.js';
 import { createWorkspace } from '../../../src/workspace/create.js';
 import { read } from '../../helpers/cli.js';
+import { cliCallError } from '../../helpers/cli-lint.js';
 import { tempDir } from '../../helpers/fixtures.js';
 
 const NAMES = ['ask', 'capture', 'ingest'];
 
-/** Parses a skill's `{{cli}} …` call with the real command definition; returns commander's error, or null. */
-function cliCallError(call: string): string | null {
-  const tokens = [...call.matchAll(/"[^"]*"|\S+/g)].map((m) => (m[0].startsWith('"') ? 'x' : m[0].replace(/<[^>]*>/g, 'x')));
-  const def = defaultCommands.find((c) => c.name === tokens[0]);
-  if (def === undefined) return `unknown command ${tokens[0]}`;
-  const cmd = new Command(def.name)
-    .option('--json')
-    .exitOverride()
-    .configureOutput({ writeOut: () => {}, writeErr: () => {} });
-  def.configure?.(cmd);
-  cmd.action(() => {});
-  try {
-    cmd.parse(tokens.slice(1), { from: 'user' });
-    return null;
-  } catch (e) {
-    return (e as Error).message;
-  }
-}
 const skill = (name: string) => readFile(join(packageCore().skillsDir, name, 'SKILL.md'), 'utf8');
 const frontmatter = async (name: string) => parse(splitFrontmatter(await skill(name)).yaml ?? '') as Record<string, unknown>;
 
