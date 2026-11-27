@@ -230,3 +230,15 @@ The team case was skipped: the account has no org team. So whether the team-repo
 **Answer:** `brain new` on an empty GitHub repo, `unmount`, a read `mount`, and `init` restore in a second clone all work end to end; each workspace change was committed and pushed, and the second folder's sync did not block the first folder's later pushes.
 **Source:** the same run · **Checked:** 2026-11-27, 0.1.0-alpha.4, Windows
 **Consequence for brain-mesh:** None. In PowerShell, a function wrapping plain `npx` drops its arguments (`npx.ps1` reads the calling line); the scenarios now define `bm` with `npx.cmd`. The agents call `npx` directly and are not affected.
+
+## Chunk 10 checks
+
+### The team-repo permission endpoint
+**Answer:** `GET orgs/{org}/teams/{slug}/repos/{owner}/{repo}` with `Accept: application/vnd.github.v3.repository+json` answers 404 when the team exists but has no access to the repo. That is the case where the team's write access is on another repo of the org. Once the team has write access, it answers 200 with `permissions`, and `ownerStatus` returns `ok`. The chunk 8 worry, a 200 without `permissions`, did not happen.
+**Source:** `test/e2e/github-sandbox.test.ts` with `BRAIN_MESH_SANDBOX_TEAM=@wildfeuer-labs/brain-sandbox-writers`, and `gh api` by hand · **Checked:** 2026-11-27, 0.1.0-alpha.5, gh 2.100.0, Windows
+**Consequence for brain-mesh:** None. The 404-then-team-exists path reports `owner-no-write`, which is right. What an outside collaborator sees of org teams is still unchecked: the sandbox account is an org owner. That needs a second account and is left for the pilot (chunk 12).
+
+### The contribute flow and the reviewer agents on Claude Code
+**Answer:** Scenarios S1, S2b, S3, S4 and S5 pass on Claude Code 2.1.325, and S2 passes in part: the PR round trip against github.com, the people-policy reviewer, the read-only mount and the consistency reviewer all behave as specified. The brain's own `AGENTS.md` keeps a judgement out of a note the agent writes before the reviewer runs. So the reviewer only catches judgements in text the user wrote, which is where it is needed.
+**Source:** the [run log](../scenarios.md#run-log) · **Checked:** 2026-11-27, 0.1.0-alpha.5, Windows
+**Consequence for brain-mesh:** S2 was rewritten. Overrides apply only to a flag the user calls a false positive. One run offered "keep it with a reason" more loosely than the skill says; chunk 11 or 12 can tighten that wording in the contribute skill.

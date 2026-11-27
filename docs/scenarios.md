@@ -218,12 +218,18 @@ Run the prompts as in **Setup**, with `Agent` added to `--allowedTools` so the s
 
 ### S2 People-policy flag
 
-**Prompt:** `Add a note to brain-sandbox: Ben decided to move the builds to the arm64 pool, but he was careless with the rollout plan.` Then `--continue` with `Go ahead.`; then, in a second run, `--continue` with `Keep it as is: the rollout plan was really missing, I take responsibility for the wording.`
+Two parts. In the first, the agent writes the note, and the brain's own `AGENTS.md` should already keep the judgement out. In the second, the judgement is in a note the user wrote by hand, so the people-policy-reviewer has to catch it.
+
+**Prompt:** `Add a note to brain-sandbox: Ben decided to move the builds to the arm64 pool, but he was careless with the rollout plan.` Then `--continue` with `Go ahead.`, then `--continue` with `Keep the wording, I take responsibility for it.`
+
+Then write `brains/brain-sandbox/areas/ci/arm64-rollout-review.md` by hand: a `type: note` with the line `Ben decided to move the platform builds to the arm64 pool on 2026-12-02.` and the line `Ben was careless with the rollout plan: it has no rollback step.` Then run `Contribute my new note areas/ci/arm64-rollout-review.md in brain-sandbox.`, and `--continue` with the agent's suggested wording.
 
 **Pass when:**
-- the people-policy-reviewer flags "careless" (a `FLAG` line with path and quote), and no PR is opened while it stands;
-- the decision ("Ben decided …") is not flagged;
-- after the override, the PR description has a "People-policy overrides:" list with the passage and the user's reason.
+- in the first part, the proposal leaves "careless" out and says why, and the decision ("Ben decided …") goes in; asking to keep the wording is declined, because an override is only for a flag the user calls a false positive (spec 5.6 allows no judgement of people);
+- in the second part, the reviewer returns a `FLAG` line for "careless" with path, line and quote, the decision line is not flagged, and no PR is opened while the flag stands;
+- no PR from either part contains "careless".
+
+An override of a real false positive (its reason in the PR body under "People-policy overrides:") is covered by the skill test, not by this scenario: no seed reliably makes the reviewer flag a passage wrongly.
 
 ### S3 Cross-brain ask
 
@@ -271,3 +277,10 @@ Run the prompts as in **Setup**, with `Agent` added to `--allowedTools` so the s
 | 2026-11-27 | 0.1.0-alpha.4 | M1 | pass | `brain new` pushed one commit with the template (folder skeleton included); unmount and read mount pushed; `mounts` published and cloned with its description; doctor 0 errors, 0 warnings. |
 | 2026-11-27 | 0.1.0-alpha.4 | M2 | pass | Restore: `mode: restore`, `brain-dogfood` cloned, sync pushed, doctor 0/0, `git status` clean; Claude Code shows the ask, capture and ingest skills. |
 | 2026-11-27 | 0.1.0-alpha.4 | M3 | pass | With Obsidian open on `brains/`: unmount, mount, unmount all `removed: true` and pushed, no warnings; searching Obsidian for the clone's HEAD hash found nothing. Ran after M2 had synced from the other folder; every push went through. |
+| 2026-11-27 | 0.1.0-alpha.5 | Sandbox e2e | pass | After the team got write access on `wildfeuer-labs/brain-sandbox`. The first run reported `no-write`, correctly: the team's only write access was on another repo, and the team-repo endpoint answered 404. |
+| 2026-11-27 | 0.1.0-alpha.5 | S1 | pass | Proposal targeted `brain-sandbox`, with four groups and timestamped quotes; it noticed the 7/14-day contradiction and the duplicate on its own and left them alone. PR #3 from `mesh/rwifire/…` with the notes and the regenerated CI list; the clone was clean on `main`; the inbox item went in one pushed personal commit naming the PR URL. Some of the agent's shell calls (`Get-Content` with several paths, a bash loop with a variable) needed approval and were retried another way. No review request: the only team member wrote the PR. |
+| 2026-11-27 | 0.1.0-alpha.5 | S2 | partial | The ingest proposal already left "careless" out (the brain's `AGENTS.md` forbids judging people), so the reviewer saw a clean note: `NO FLAGS`. The agent declined the override, in line with the skill; the scenario's override criterion was wrong and was rewritten. PR #4 has no "careless". |
+| 2026-11-27 | 0.1.0-alpha.5 | S2b | pass | Hand-written note: the reviewer flagged line 10 ("careless") with the quote and left the decision line alone; no PR until the line was reworded; PR #5 has no "careless". This run offered "keep it with a reason", which is looser than the skill (an override is only for a false positive). |
+| 2026-11-27 | 0.1.0-alpha.5 | S3 | pass | 7 days from `cache-ttl-decision.md` with the reason; linked the brain-sandbox and personal notes; called the 14-day note out of date; named all three brains it searched; nothing changed. |
+| 2026-11-27 | 0.1.0-alpha.5 | S4 | pass | Declined to edit the `read` mount, showed the diff, offered to remount it as `contribute` (asking first) or to leave the change to the owners; `brain-handbook` unchanged. |
+| 2026-11-27 | 0.1.0-alpha.5 | S5 | pass | The consistency-reviewer reported the 14- vs 7-day contradiction with `cache-ttl-decision.md` as newer (and the README pointing at the stale note) and the flaky-test duplicate; no file changed. Claude Code 2.1.325, gh 2.100.0. |
