@@ -170,7 +170,39 @@ bm brain publish brain-handbook "$base/brain-handbook.git" --json
 bm unmount brain-handbook --json && bm mount "$base/brain-handbook.git" --json    # mode: read
 ```
 
-In PowerShell, set `$base = Join-Path $env:TEMP "shared run $(Get-Random)"`, create the folders with `New-Item -ItemType Directory -Force`, use `Copy-Item -Recurse "<repo>\test\fixtures\scenarios\shared\brain-sandbox\*" brains\brain-sandbox\` for `cp -r`, and `;` with `if ($?)` in place of `&&`.
+In PowerShell (Windows), the same setup. `robocopy` merges the seed into the existing brain folders. Its exit code 1 means "files copied", which is not an error. Paths given to `brain publish` and `mount` use forward slashes, so the repo name can be read from them.
+
+```powershell
+$repo = '<repo>'
+function bm { & npx.cmd -y brain-mesh-ai-workspace@<version> @args }
+$base = Join-Path $env:TEMP "shared run $(Get-Random)"
+$fwd = $base -replace '\\', '/'
+New-Item -ItemType Directory -Force "$base\workspace" | Out-Null
+git init --bare -q -b main "$base\remote.git"
+git init --bare -q -b main "$base\brain-handbook.git"
+Set-Location "$base\workspace"
+bm init --remote "$fwd/remote.git" --json
+robocopy "$repo\test\fixtures\scenarios\personal" brains\personal /E /NFL /NDL /NJH /NJS
+Copy-Item "$repo\test\fixtures\scenarios\shared\inbox\2026-11-26-ci-retro.md" brains\personal\inbox\
+bm doctor personal --fix --json
+bm commit -m "Seed scenario notes" --json
+
+bm brain new brain-sandbox --description "Scratch shared brain for the platform team's CI and release notes." --owner '@wildfeuer-labs/brain-sandbox-writers' --json
+robocopy "$repo\test\fixtures\scenarios\shared\brain-sandbox" brains\brain-sandbox /E /NFL /NDL /NJH /NJS
+bm doctor brain-sandbox --fix --json
+bm commit brain-sandbox -m "Seed" --json
+bm brain publish brain-sandbox https://github.com/wildfeuer-labs/brain-sandbox.git --json
+
+bm brain new brain-handbook --description "Company-wide handbook: how releases and other shared processes work." --json
+robocopy "$repo\test\fixtures\scenarios\shared\brain-handbook" brains\brain-handbook /E /NFL /NDL /NJH /NJS
+bm doctor brain-handbook --fix --json
+bm commit brain-handbook -m "Seed" --json
+bm brain publish brain-handbook "$fwd/brain-handbook.git" --json
+bm unmount brain-handbook --json
+bm mount "$fwd/brain-handbook.git" --json
+```
+
+Check that each `doctor` reports `"errors":0` before running the `commit` after it.
 
 Run the prompts as in **Setup**, with `Agent` added to `--allowedTools` so the skills can call the reviewer agents. Before each scenario, close any PR the previous one left open and delete its `mesh/…` branch on GitHub (`gh pr close <n> --delete-branch`). After S1 and S2, reset the personal brain as P4 says if the inbox item is gone.
 
