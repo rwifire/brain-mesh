@@ -250,3 +250,25 @@ The team case was skipped: the account has no org team. So whether the team-repo
 A second clone with alpha.4, which predates the `sync` guard, pulled the upgrade and rendered its old `AGENTS.md` and `.gitignore` under the new pin. Nothing was committed, and `init` with alpha.6 put the new files back.
 **Source:** the [run log](../scenarios.md#run-log) · **Checked:** 2026-11-27, 0.1.0-alpha.6, Windows
 **Consequence for brain-mesh:** The mixed render from an old CLI is real, which is why from alpha.6 `sync` warns `W_PIN_CHANGED` instead of rendering and `mount`, `unmount`, `brain new` and `brain publish` refuse with `E_PIN_MISMATCH` (chunk 11 final review). Workspaces still on alpha.5 or older stay exposed until they upgrade. The guard's first hand check is the alpha.6 → alpha.7 upgrade (chunk 12).
+
+## Chunk 12 checks
+
+### Duplicate skills and agents in Copilot
+**Answer:** VS Code Copilot Chat lists each skill and custom agent once, although the workspace renders them into both `.claude/` and `.github/`. Copilot CLI was not checked: it isn't installed on the dogfood machine.
+**Source:** scenario C1 in the [run log](../scenarios.md#run-log) · **Checked:** 2026-11-27, 0.1.0-alpha.7, Windows
+**Consequence for brain-mesh:** None; both folders stay rendered. The Copilot CLI half stays open until someone runs C1 there.
+
+### Auto-approve rules that work
+**Answer:** Claude Code accepts `Bash(npx -y brain-mesh-ai-workspace@*)`, `PowerShell(npx -y brain-mesh-ai-workspace@*)` and `PowerShell(npx.cmd -y brain-mesh-ai-workspace@*)` in the workspace's `.claude/settings.json`, but only once the folder is trusted: before that it prints that it ignores them. VS Code Copilot accepts `"chat.tools.terminal.autoApprove": { "/^npx(\\.cmd)? -y brain-mesh-ai-workspace@/": true }` in `.vscode/settings.json`.
+**Source:** the auto-approve, C2 and C3 rows of the [run log](../scenarios.md#run-log) · **Checked:** 2026-11-27, 0.1.0-alpha.7, Claude Code and VS Code, Windows
+**Consequence for brain-mesh:** The getting-started guide says to accept Claude Code's trust dialog once.
+
+### The npx warm-up
+**Answer:** With the warm-up in `init`, the first pinned call takes 1.2 s, the cached time from chunk 2 (0.9–1.3 s on Windows), not the cold 6.6–10.6 s. `init` itself took 3.8 s with the warm-up.
+**Source:** the warm-up row of the [run log](../scenarios.md#run-log) · **Checked:** 2026-11-27, 0.1.0-alpha.7, Windows
+**Consequence for brain-mesh:** None.
+
+### The `sync` guard on an old CLI
+**Answer:** After another clone upgraded to alpha.7, alpha.6's `sync` pulled the upgrade, warned `W_PIN_CHANGED` and rendered nothing; alpha.7 `init` then restored a clean tree.
+**Source:** the alpha.7 U1 row of the [run log](../scenarios.md#run-log) · **Checked:** 2026-11-27, 0.1.0-alpha.7, Windows
+**Consequence for brain-mesh:** None. Closes the chunk 11 hand check.
