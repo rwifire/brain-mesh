@@ -43,6 +43,12 @@ describe('docs', () => {
     for (const r of ['"Bash(npx -y', '"PowerShell(npx -y', '"PowerShell(npx.cmd -y']) expect(rules.some((l) => l.includes(r)), r).toBe(true);
   });
 
+  it('claude code rules need a trusted folder', async () => {
+    const text = await readFile(join(ROOT, 'docs', 'getting-started.md'), 'utf8');
+    const approve = text.slice(text.indexOf('## 4.'), text.indexOf('## 5.'));
+    expect(approve).toMatch(/trust dialog/i);
+  });
+
   it('other machines sync before init after an upgrade', async () => {
     const text = await readFile(join(ROOT, 'docs', 'getting-started.md'), 'utf8');
     const upgrading = text.slice(text.indexOf('## 9. Upgrading'), text.indexOf('## 10.'));

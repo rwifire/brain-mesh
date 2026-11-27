@@ -56,6 +56,8 @@ Agents call the CLI often, about once per step. Approve brain-mesh once, and onl
 }
 ```
 
+Claude Code applies these rules only in a folder you trust. If you haven't yet, start `claude` in the workspace once and accept the trust dialog. Until then, every brain-mesh call asks for approval, and in `claude -p` it is refused.
+
 **VS Code (Copilot):** add this to `.vscode/settings.json` in the workspace:
 
 ```json
