@@ -45,7 +45,8 @@ export function structureChecks(ws: WorkspaceModel): Finding[] {
 
     for (const dir of b.dirs) {
       const parts = dir.split('/');
-      if (parts.length === 2 && parts[0] === 'areas' && !b.files.includes(`${dir}/README.md`)) {
+      // A dot folder under areas/ (e.g. .trash) is not an area, like dot folders everywhere else.
+      if (parts.length === 2 && parts[0] === 'areas' && !parts[1]!.startsWith('.') && !b.files.includes(`${dir}/README.md`)) {
         out.push(finding('area-readme-missing', { brain: b.id, path: at(dir), message: `area ${parts[1]} has no README.md` }));
       }
     }

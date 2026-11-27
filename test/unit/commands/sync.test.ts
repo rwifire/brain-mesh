@@ -27,6 +27,14 @@ async function setup(...names: string[]) {
 const sync = (root: string) => run(['sync', '--json'], root);
 
 describe('sync', () => {
+  it('no upstream says nothing was pulled', async () => {
+    const { root } = await setup();
+    await git(root, 'branch', '--unset-upstream');
+    const r = await run(['sync'], root);
+    expect(r.code, r.out).toBe(0);
+    expect(r.out.startsWith('Workspace has no upstream branch; nothing was pulled or pushed.'), r.out).toBe(true);
+  });
+
   it('clones missing and fast-forwards', async () => {
     const { root, urls } = await setup('brain-sre');
     await pushToRemote(urls['brain-sre']!, 'notes/new.md', '# New\n');

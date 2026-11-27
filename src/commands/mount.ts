@@ -1,7 +1,7 @@
 import { readFile, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { parse } from 'yaml';
-import { git } from '../git.js';
+import { git, gitOk } from '../git.js';
 import type { Host } from '../host/host.js';
 import type { CommandDef } from '../main.js';
 import { assertFreeId, brainIdOf, cloneBrain, removeFolder } from '../mount/clone.js';
@@ -63,8 +63,10 @@ async function descriptionOf(root: string, id: string): Promise<string | null> {
 
 /** Commits the workspace config and pulls/pushes; a commit of nothing (already recorded) is fine. */
 export async function record(root: string, message: string): Promise<{ commit: string | null; pushed: boolean; warnings: Warning[] }> {
-  const commit = await commitPaths(root, WORKSPACE_CONFIG, message);
+  const made = await commitPaths(root, WORKSPACE_CONFIG, message);
   const { pushed, warnings } = await pullPush(root);
+  // The pull rebases our commit onto newer ones, so report the commit as it is now.
+  const commit = made === null ? null : await gitOk(root, ['rev-parse', 'HEAD']);
   return { commit, pushed, warnings };
 }
 

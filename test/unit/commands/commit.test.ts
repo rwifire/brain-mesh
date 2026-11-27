@@ -35,6 +35,37 @@ async function pushFrom(dir: string, tree: Record<string, string>) {
 }
 
 describe('commit', () => {
+  it('an empty message is refused', async () => {
+    const { root } = await setup();
+    await writeTree(root, { 'brains/personal/inbox/a.md': '# A\n' });
+    const before = await git(root, 'status', '--porcelain');
+    const r = await commit(root, '-m', '');
+    expect(r.code, r.out).toBe(2);
+    expect(r.json().error).toMatchObject({ code: 'E_USAGE', message: '--message needs a first line: it is the commit message and the pull request title' });
+    expect(await git(root, 'status', '--porcelain')).toBe(before);
+  });
+
+  it('a failed git commit leaves nothing staged', async () => {
+    const { root } = await setup();
+    const hooks = await tempDir('bm hooks ');
+    await writeTree(hooks, { 'pre-commit': '#!/bin/sh\necho "hook says no" >&2\nexit 1\n' });
+    await git(root, 'config', 'core.hooksPath', hooks.replace(/\\/g, '/'));
+    await writeTree(root, { 'brains/personal/inbox/a.md': '# A\n' });
+    const r = await commit(root, '-m', 'Capture a');
+    expect(r.code, r.out).not.toBe(0);
+    expect(r.json().error.code).toBe('E_GIT');
+    expect(r.json().error.message).toContain('git commit failed');
+    expect((await git(root, 'diff', '--cached', '--name-only')).trim()).toBe('');
+  });
+
+  it('a blank first line is refused', async () => {
+    const { root } = await setup();
+    await writeTree(root, { 'brains/personal/inbox/a.md': '# A\n' });
+    const r = await commit(root, '-m', '  \n\nbody');
+    expect(r.code, r.out).toBe(2);
+    expect(r.json().error.code).toBe('E_USAGE');
+  });
+
   it('commits only personal paths and pushes', async () => {
     const { root, bare } = await setup();
     await writeTree(root, { 'brains/personal/inbox/a.md': '# A\n', 'tools/x.ts': 'export {};\n' });

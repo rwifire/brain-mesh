@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { commitPaths, WORKSPACE_CONFIG } from '../../../src/workspace/repo.js';
+import { join } from 'node:path';
+import { commitPaths, pullPush, WORKSPACE_CONFIG } from '../../../src/workspace/repo.js';
 import { tempDir, writeTree } from '../../helpers/fixtures.js';
 import { isolateGit } from '../../helpers/git-env.js';
 import { git } from '../../helpers/workspace.js';
@@ -36,5 +37,26 @@ describe('commitPaths', () => {
     await writeTree(dir, { '.gitignore': '.mesh/\n' });
     await commitPaths(dir, WORKSPACE_CONFIG, 'Render');
     expect((await git(dir, 'show', '--name-only', '--format=', 'HEAD')).trim()).toBe('.gitignore');
+  });
+});
+
+describe('pullPush', () => {
+  it('a conflicting restore says where the changes are', async () => {
+    const dir = await repo();
+    const base = await tempDir('bm repo remote ');
+    const bare = join(base, 'remote.git');
+    await git(base, 'init', '--bare', '-q', '-b', 'main', bare);
+    await git(dir, 'remote', 'add', 'origin', bare);
+    await git(dir, 'push', '-q', '-u', 'origin', 'main');
+    const other = join(base, 'other');
+    await git(base, 'clone', '-q', bare, other);
+    await writeTree(other, { 'tools/x.ts': 'theirs\n' });
+    await git(other, 'commit', '-q', '-am', 'theirs');
+    await git(other, 'push', '-q');
+    await writeTree(dir, { 'tools/x.ts': 'mine\n' });
+    const r = await pullPush(dir);
+    const kept = r.warnings.find((w) => w.code === 'W_STASH_KEPT');
+    expect(kept?.message).toContain('conflict markers');
+    expect(kept?.message).toContain('git stash list');
   });
 });

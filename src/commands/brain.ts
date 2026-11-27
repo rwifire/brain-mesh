@@ -29,6 +29,8 @@ async function pushToOrigin(dir: string, url: string): Promise<void> {
     await git(dir, ['remote', 'remove', 'origin']);
     throw new CliError(ErrorCode.Git, `the push to ${url} failed: ${firstLine(push.stderr)}`);
   }
+  // A clone gets origin/HEAD from the remote; a pushed brain has to set it, or sync's branch check never fires.
+  await git(dir, ['remote', 'set-head', 'origin', 'main']);
 }
 
 export interface BrainNewData {

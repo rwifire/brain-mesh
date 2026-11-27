@@ -1,8 +1,8 @@
 import { stat } from 'node:fs/promises';
 import { join } from 'node:path';
-import { assertGate, brainChanges } from '../contribute/gate.js';
+import { assertGate, brainChanges, hasLocalCommits } from '../contribute/gate.js';
 import { contributePr } from '../contribute/pr.js';
-import { gitOk } from '../git.js';
+import { git, gitOk } from '../git.js';
 import type { Host } from '../host/host.js';
 import type { CommandDef } from '../main.js';
 import { CliError, ErrorCode, ExitCode, type Warning } from '../output.js';
@@ -54,7 +54,12 @@ async function commitPersonal(root: string, message: string, dryRun: boolean): P
   let files: string[] = [];
   if (changed) {
     await gitOk(root, ['add', '-A', '--', PERSONAL]);
-    await gitOk(root, ['commit', '-q', '-m', message, '--', PERSONAL]);
+    const commit = await git(root, ['commit', '-q', '-m', message, '--', PERSONAL]);
+    if (commit.exitCode !== 0) {
+      // Leave the index as it was: nothing of the failed commit stays staged.
+      await git(root, ['reset', '-q', '--', PERSONAL]);
+      throw new CliError(ErrorCode.Git, `git commit failed: ${commit.stderr.trim().split('\n')[0]!.trim() || `exit ${commit.exitCode}`}`);
+    }
     files = (await gitOk(root, ['show', '--name-only', '--format=', '-z', 'HEAD'])).split('\0').filter((f) => f !== '');
   }
   const { pushed, warnings: syncWarnings } = await pullPush(root);
@@ -93,6 +98,9 @@ export function commitCommandFor(deps: { host: Host }): CommandDef {
         throw new CliError(ErrorCode.NoWorkspace, `no mesh.yaml found in ${ctx.cwd} or any parent folder`, ExitCode.Failure);
       }
       const message = String(opts.message);
+      if (message.split(/\r?\n/)[0]!.trim() === '') {
+        throw new CliError(ErrorCode.Usage, '--message needs a first line: it is the commit message and the pull request title', ExitCode.Usage);
+      }
       const dryRun = opts.dryRun === true;
 
       if (id === 'personal') {
@@ -109,7 +117,7 @@ export function commitCommandFor(deps: { host: Host }): CommandDef {
       if (!(await exists(join(dir, '.git')))) throw new CliError(ErrorCode.Git, `brains/${id}/ is not a git clone; run brain-mesh sync`);
       await assertGitIdentity(dir);
       const files = await brainChanges(dir);
-      if (files.length > 0) await assertGate(root, id);
+      if (files.length > 0 || (await hasLocalCommits(dir))) await assertGate(root, id);
 
       if (mount.url === undefined) {
         const data = await commitDirect(dir, id, files, message, dryRun);

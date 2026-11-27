@@ -28,6 +28,21 @@ describe('mocEntry', () => {
     ));
   it('collapses whitespace in the summary', () => expect(mocEntry('', 'x.md', 'T', 'a\n  b')).toBe('- [T](x.md) — a b\n'));
   it('no summary', () => expect(mocEntry('', 'x.md', 'T', undefined)).toBe('- [T](x.md)\n'));
+  it('MOC links survive # ? % ] and spaces', async () => {
+    expect(mocEntry('notes', 'notes/c#-tips.md', 'C# [tips]', null)).toBe('- [C# \\[tips\\]](c%23-tips.md)\n');
+    expect(mocEntry('notes', 'notes/my c#.md', 'T', null)).toBe('- [T](<my c%23.md>)\n');
+    expect(mocEntry('', 'a?b/50%.md', 'T', null)).toBe('- [T](a%3Fb/50%25.md)\n');
+    const root = await fullWorkspace();
+    const body = '---\ntype: note\nsummary: Odd name.\nupdated: 2026-11-27\n---\n# Odd\n';
+    for (const n of ['c#-tips.md', 'a?b.md', '50%.md', 'my c#.md']) {
+      if (process.platform === 'win32' && n.includes('?')) continue; // not a valid Windows file name
+      await write(root, `${P}/notes/${n}`, body);
+    }
+    expect((await run(['doctor', 'brain-team-platform', '--fix', '--json'], root)).code).not.toBe(3);
+    const after = await run(['doctor', 'brain-team-platform', '--json'], root);
+    const broken = after.json().data.findings.filter((f: { code: string }) => f.code === 'link-broken');
+    expect(broken, after.out).toEqual([]);
+  });
   it('angle-brackets paths with spaces', () => expect(mocEntry('notes', 'notes/a b.md', 'A b', undefined)).toBe('- [A b](<a b.md>)\n'));
 });
 

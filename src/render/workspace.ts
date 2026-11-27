@@ -201,7 +201,8 @@ async function readLocalInstructions(root: string): Promise<LocalInstruction[]> 
   }
   const out: LocalInstruction[] = [];
   for (const e of entries.filter((x) => x.isFile() && x.name.endsWith('.md'))) {
-    out.push({ name: e.name, text: (await readText(join(root, '.local', e.name))) ?? '' });
+    // LF everywhere, so a CRLF file from a Windows editor gives the same AGENTS.md and record on every OS.
+    out.push({ name: e.name, text: ((await readText(join(root, '.local', e.name))) ?? '').replace(/\r\n/g, '\n') });
   }
   return out;
 }

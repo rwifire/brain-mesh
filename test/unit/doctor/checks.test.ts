@@ -64,6 +64,7 @@ const CASES: Case[] = [
     name: 'note-misplaced (nested notes)', code: 'note-misplaced', at: `${P}/notes/old/x.md`,
     patch: (r) => writeFiles(r, { [`${P}/notes/old/x.md`]: note('note') }),
   },
+  { name: 'dot folders under areas are not areas', code: null, patch: (r) => writeFiles(r, { [`${P}/areas/.trash/x.md`]: note('note') }) },
   { name: 'area-nested', code: 'area-nested', at: `${P}/areas/ci/old`, patch: (r) => writeFiles(r, { [`${P}/areas/ci/old/x.md`]: note('note') }) },
   {
     name: 'conflict-markers', code: 'conflict-markers', at: `${P}/notes/build-glossary.md`, line: 8,

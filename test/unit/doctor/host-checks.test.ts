@@ -53,6 +53,33 @@ describe('hostChecks', () => {
     }
   });
 
+  it('owner lookups run concurrently', async () => {
+    const tree = {
+      'brains/brain-team-platform/areas/one/README.md': area('@acme/one'),
+      'brains/brain-team-platform/areas/two/README.md': area('@acme/two'),
+      'brains/brain-team-platform/areas/three/README.md': area('@acme/three'),
+    };
+    const base = fakeHost({ owners: { [`@acme/one|${REPO}`]: 'not-found', [`@acme/three|${REPO}`]: 'not-found' } });
+    let inFlight = 0;
+    let max = 0;
+    const host = {
+      ...base,
+      async ownerStatus(owner: string, repo: { owner: string; name: string }) {
+        inFlight++;
+        max = Math.max(max, inFlight);
+        await new Promise((r) => setTimeout(r, 20));
+        inFlight--;
+        return base.ownerStatus(owner, repo);
+      },
+    };
+    const r = await hostChecks(await ws(tree), host, { offline: false });
+    expect(max).toBeGreaterThan(1);
+    expect(r.findings.filter((f) => f.code === 'owner-not-found').map((f) => f.path)).toEqual([
+      'brains/brain-team-platform/areas/one/README.md',
+      'brains/brain-team-platform/areas/three/README.md',
+    ]);
+  });
+
   it('owners', async () => {
     const tree = { 'brains/brain-team-platform/areas/ghost/README.md': area('@acme/ghost') };
     const at = 'brains/brain-team-platform/areas/ghost/README.md';

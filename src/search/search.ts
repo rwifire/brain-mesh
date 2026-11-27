@@ -29,10 +29,14 @@ export interface SearchData {
 }
 
 const SNIPPET_MAX = 200;
-const norm = (s: string) => s.normalize('NFC').toLowerCase();
+/** NFC, lower case, and `ß` as `ss`, so `Straße` and `STRASSE` find each other (chunk 13). */
+const norm = (s: string) => s.normalize('NFC').toLowerCase().replace(/ß/g, 'ss');
 const byString = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 /** A generated block, kept as blank lines so line numbers stay right. */
 const BLOCK = /<!-- brain-mesh:([a-z-]+) -->[\s\S]*?<!-- \/brain-mesh:\1 -->/g;
+/** A fenced code block (``` or ~~~), up to its closing fence or the end of the text. */
+const FENCE = /^(`{3,}|~{3,})[^\n]*\n[\s\S]*?(?:^\1[ \t]*$|(?![\s\S]))/gm;
+const blank = (m: string) => m.replace(/[^\n]/g, '');
 
 /** Lower-cased NFC words of `query`; punctuation and spaces separate them (plan Ruling 2). */
 export function queryTerms(query: string): string[] {
@@ -58,7 +62,8 @@ function searchable(path: string): boolean {
 function score(brain: BrainModel, n: NoteModel, terms: RegExp[]): SearchHit | null {
   const split = splitFrontmatter(n.text);
   const body = split.body.replace(BLOCK, (m) => '\n'.repeat(m.split('\n').length - 1));
-  const heading = /^#[ \t]+(.+?)[ \t]*#*[ \t]*$/m.exec(body);
+  // A closing run of # needs a space before it (CommonMark), so `# Use C#` keeps its #; fenced lines are no heading.
+  const heading = /^#[ \t]+(.+?)(?:[ \t]+#+)?[ \t]*$/m.exec(body.replace(FENCE, blank));
   const title = heading ? heading[1]!.trim() : posix.basename(n.path, '.md');
   const rawSummary = n.frontmatter?.summary;
   const summary = typeof rawSummary === 'string' ? rawSummary : null;
