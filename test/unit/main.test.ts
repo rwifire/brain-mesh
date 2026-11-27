@@ -131,4 +131,30 @@ describe('main', () => {
     expect(r.out).toContain('version');
     expect(r.err).toBe('');
   });
+
+  it('two-word commands', async () => {
+    const seen: string[][] = [];
+    const stub = (name: string): CommandDef => ({
+      name,
+      description: name,
+      configure: (cmd) => {
+        cmd.argument('[x]');
+      },
+      run: async (_ctx, args) => {
+        seen.push(args);
+        return { data: name, text: name };
+      },
+    });
+    const stubs = [stub('brain new'), stub('brain publish')];
+    const created = await run(['brain', 'new', 'x', '--json'], stubs);
+    expect(created.code).toBe(0);
+    expect(envelope(created.out)).toMatchObject({ ok: true, command: 'brain new', data: 'brain new' });
+    expect(seen[0]).toEqual(['x']);
+    expect(envelope((await run(['brain', 'publish', '--json'], stubs)).out)).toMatchObject({ command: 'brain publish' });
+    for (const argv of [['brain', '--json'], ['brain', 'nope', '--json']]) {
+      const r = await run(argv, stubs);
+      expect(r.code, argv.join(' ')).toBe(2);
+      expect(envelope(r.out).error.code).toBe('E_USAGE');
+    }
+  });
 });

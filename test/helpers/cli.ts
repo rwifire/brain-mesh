@@ -1,14 +1,12 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { defaultCommands } from '../../src/commands/index.js';
-import { doctorCommand } from '../../src/commands/doctor.js';
+import { commandsFor } from '../../src/commands/index.js';
 import { main, type CommandDef } from '../../src/main.js';
 import { fakeHost } from './host.js';
 import { captureIo } from './io.js';
 
-/** The real commands, with `doctor` on a fake host (write access, every owner valid) so no test reaches real gh. */
-export const testCommands = (): readonly CommandDef[] =>
-  defaultCommands.map((c) => (c.name === 'doctor' ? doctorCommand({ host: fakeHost() }) : c));
+/** The real commands on a fake host (write access, every owner valid) so no test reaches real gh. */
+export const testCommands = (): readonly CommandDef[] => commandsFor(fakeHost());
 
 /** Runs the CLI in-process; `commands` defaults to `testCommands()`. */
 export const run = async (argv: string[], cwd: string, commands?: readonly CommandDef[]) => {

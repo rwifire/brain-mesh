@@ -1,4 +1,4 @@
-import { mkdir, readdir } from 'node:fs/promises';
+import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { initCommand } from '../../../src/commands/init.js';
@@ -7,7 +7,10 @@ import { run } from '../../helpers/cli.js';
 import { tempDir, writeTree } from '../../helpers/fixtures.js';
 import { isolateGit } from '../../helpers/git-env.js';
 import { fakeHost } from '../../helpers/host.js';
+import { initWorkspace, sharedRemote } from '../../helpers/remotes.js';
+import { PKG_VERSION } from '../../helpers/version.js';
 import { git } from '../../helpers/workspace.js';
+import { meshYaml } from '../../../src/workspace/create.js';
 
 /** An empty folder (with a space in its path) and an empty bare repo standing in for GitHub. */
 async function setup() {
@@ -99,12 +102,13 @@ describe('init', () => {
     expect(await readdir(folder)).toEqual(['notes.txt']);
   });
 
-  it('existing workspace', async () => {
+  it('existing workspace with an invalid mesh.yaml', async () => {
     await isolateGit();
     const { folder, bare } = await setup();
     await writeTree(folder, { 'mesh.yaml': 'version: 1\n' });
     const r = await init(folder, fakeHost({ repoUrl: bare }));
-    expect(r.json().error.code).toBe('E_NOT_SUPPORTED');
+    expect(r.json().error.code).toBe('E_MESH_INVALID');
+    expect(await readdir(folder)).toEqual(['mesh.yaml']);
   });
 
   it('no git identity', async () => {
@@ -189,5 +193,56 @@ describe('init', () => {
     const { folder, bare } = await setup();
     const r = await run(['init'], folder, [initCommand({ host: fakeHost({ repoUrl: bare }) })]);
     expect(r.out).toBe(`Created the brain-mesh workspace for octo-user in ${folder}\nPushed to ${bare}\nOpen ${join(folder, 'brains')} as an Obsidian vault.\n`);
+  });
+});
+
+describe('restore', () => {
+  /** Every path under `dir`, `.git` excluded, sorted. */
+  const tree = async (dir: string) =>
+    (await readdir(dir, { recursive: true })).map((p) => p.replace(/\\/g, '/')).filter((p) => p !== '.git' && !p.startsWith('.git/')).sort();
+
+  async function cloned() {
+    await isolateGit();
+    const ws = await initWorkspace();
+    const url = await sharedRemote(ws.base, 'brain-sre');
+    expect((await run(['mount', url, '--json'], ws.root)).code).toBe(0);
+    const folder = join(await tempDir('bm restore '), 'ws');
+    await git(join(folder, '..'), 'clone', '-q', ws.remote, 'ws');
+    return { ...ws, folder };
+  }
+
+  it('restores a cloned workspace', async () => {
+    const { folder, remote } = await cloned();
+    const r = await run(['init', '--json'], folder);
+    expect(r.code, r.out).toBe(0);
+    expect(r.json().data).toMatchObject({ mode: 'restore', user: 'octo-user', brain_mesh: PKG_VERSION, remote, repoCreated: false, doctor: { errors: 0 } });
+    expect(r.json().data.sync.mounts).toEqual([{ id: 'brain-sre', status: 'cloned' }]);
+    expect((r.json().warnings as { code: string }[]).map((w) => w.code)).not.toContain('W_RENDER_PATH_TAKEN');
+    expect((await git(folder, 'config', 'core.hooksPath')).trim()).toBe('.mesh/hooks');
+    expect(await tree(folder)).toContain('.claude/skills/ask/SKILL.md');
+    expect(await tree(folder)).toContain('brains/brain-sre/brain.yaml');
+    expect((await git(folder, 'status', '--porcelain')).trim()).toBe('');
+    const doctor = await run(['doctor', '--json'], folder);
+    expect(doctor.json().data.counts.errors, doctor.out).toBe(0);
+  });
+
+  it('restore refuses another version', async () => {
+    const { folder } = await cloned();
+    const meshPath = join(folder, 'mesh.yaml');
+    await writeFile(meshPath, (await readFile(meshPath, 'utf8')).replace(`brain_mesh: ${PKG_VERSION}`, 'brain_mesh: 0.0.1'), 'utf8');
+    const before = await tree(folder);
+    const r = await run(['init', '--json'], folder);
+    expect(r.json().error).toMatchObject({ code: 'E_PIN_MISMATCH', message: expect.stringContaining('npx -y brain-mesh-ai-workspace@0.0.1 init') });
+    expect(await tree(folder)).toEqual(before);
+    expect((await git(folder, 'config', '--get', 'core.hooksPath').catch(() => '')).trim()).toBe('');
+  });
+
+  it('restore needs a git clone', async () => {
+    await isolateGit();
+    const { folder, bare } = await setup();
+    await writeTree(folder, { 'mesh.yaml': meshYaml('octo-user', PKG_VERSION) });
+    const r = await init(folder, fakeHost({ repoUrl: bare }));
+    expect(r.json().error).toMatchObject({ code: 'E_GIT', message: expect.stringContaining('git clone') });
+    expect(await readdir(folder)).toEqual(['mesh.yaml']);
   });
 });

@@ -19,6 +19,14 @@ export const ErrorCode = {
   Offline: 'E_OFFLINE',
   Host: 'E_HOST',
   PrCreate: 'E_PR_CREATE',
+  MeshInvalid: 'E_MESH_INVALID',
+  MountExists: 'E_MOUNT_EXISTS',
+  NotABrain: 'E_NOT_A_BRAIN',
+  NoPushRights: 'E_NO_PUSH_RIGHTS',
+  MountDirty: 'E_MOUNT_DIRTY',
+  PinMismatch: 'E_PIN_MISMATCH',
+  RepoName: 'E_REPO_NAME',
+  AlreadyPublished: 'E_ALREADY_PUBLISHED',
 } as const;
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];
 

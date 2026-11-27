@@ -54,6 +54,11 @@ export function personalManifest(user: string): BrainManifest {
   };
 }
 
+/** The manifest of a new shared brain (spec 5.2): schema 1 and the `accountability` people policy. */
+export function sharedManifest(o: { id: string; name: string; description: string; owner: string }): BrainManifest {
+  return { id: o.id, name: o.name, type: 'shared', description: o.description, schema: 1, owner: o.owner, policies: { people: 'accountability' } };
+}
+
 /**
  * Every file of a new brain, brain-relative path → text, sorted: `brain.yaml`, `AGENTS.md`,
  * `CLAUDE.md`, `index.md`, an empty `<folder>/.gitkeep` per folder of `BRAIN_FOLDERS` and, when shared, `CODEOWNERS`. The generated parts come from the
