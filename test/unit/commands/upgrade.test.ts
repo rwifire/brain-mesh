@@ -134,6 +134,29 @@ describe('upgrade', () => {
     expect(JSON.parse(await read(root, 'brains/.obsidian/app.json'))).toMatchObject({ alwaysUpdateLinks: true, theme: 'obsidian' });
   });
 
+  it('does not commit a template file it did not write', async () => {
+    const { root, remote } = await setup();
+    expect((await upgrade(root)).code).toBe(0);
+    const obsidian = JSON.stringify({ ...JSON.parse(await read(root, 'brains/.obsidian/app.json')), theme: 'moonstone' }, null, 2) + '\n';
+    await write(root, 'brains/.obsidian/app.json', obsidian);
+    const sha = await head(root);
+    const again = await upgrade(root);
+    expect(again.code, again.out).toBe(0);
+    expect(again.json().data.commit).toBeNull();
+    expect(await head(root)).toBe(sha);
+    expect((await git(remote, 'rev-parse', 'main')).trim()).toBe(sha);
+    expect(await read(root, 'brains/.obsidian/app.json')).toBe(obsidian);
+
+    const kept = await setup();
+    const mine = '{\n  "useMarkdownLinks": true,\n  "theme": "obsidian"\n}\n';
+    await write(kept.root, 'brains/.obsidian/app.json', mine);
+    const r = await upgrade(kept.root);
+    expect(r.code, r.out).toBe(0);
+    expect(r.json().data.seeds).toContainEqual(expect.objectContaining({ path: 'brains/.obsidian/app.json', status: 'kept' }));
+    expect((await git(kept.root, 'show', '--name-only', '--format=', 'HEAD')).trim().split('\n')).not.toContain('brains/.obsidian/app.json');
+    expect((await git(kept.root, 'status', '--porcelain')).trim()).toBe('M brains/.obsidian/app.json');
+  });
+
   it('overrides', async () => {
     const { root } = await setup();
     const local = '---\nname: ask\ndescription: My own ask. Use when I say so.\n---\n# My ask\n';

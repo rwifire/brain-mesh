@@ -13,7 +13,7 @@ import { BrainId } from '../schemas/common.js';
 import { editMesh, readMesh } from '../workspace/mesh-edit.js';
 import { assertEmptyRemote, assertGitIdentity } from '../workspace/repo.js';
 import { absoluteUrl, isNetworkUrl, repoNameFromUrl } from '../workspace/url.js';
-import { record, workspaceRoot } from './mount.js';
+import { record, renderingWorkspaceRoot } from './mount.js';
 
 const firstLine = (s: string) => s.trim().split('\n')[0]!.trim();
 const RIGHTS_HINT = 'a shared brain needs a repo you can push to; ask its owner for write access';
@@ -60,7 +60,7 @@ export function brainNewCommand(deps: { host: Host }): CommandDef {
       else if (BrainId.safeParse(arg).success) id = arg;
       else throw new CliError(ErrorCode.Usage, `${arg} is not a brain id: use lowercase kebab-case, e.g. brain-ideas`, ExitCode.Usage);
 
-      const root = await workspaceRoot(ctx.cwd);
+      const root = await renderingWorkspaceRoot(ctx.cwd);
       const mesh = await readMesh(root);
       if (mesh.mounts.some((m) => m.id === id)) throw new CliError(ErrorCode.MountExists, `${id} is already mounted`);
       await assertFreeId(root, id);
@@ -123,7 +123,7 @@ export function brainPublishCommand(deps: { host: Host }): CommandDef {
     run: async (ctx, args) => {
       const [id, rawUrl] = args as [string, string];
       const url = absoluteUrl(rawUrl, ctx.cwd);
-      const root = await workspaceRoot(ctx.cwd);
+      const root = await renderingWorkspaceRoot(ctx.cwd);
       const mount = (await readMesh(root)).mounts.find((m) => m.id === id);
       if (mount === undefined) throw new CliError(ErrorCode.UnknownBrain, `unknown brain: ${id} is not a mount in mesh.yaml`, ExitCode.Usage);
       if (mount.url !== undefined) throw new CliError(ErrorCode.AlreadyPublished, `${id} is already published at ${mount.url}`);

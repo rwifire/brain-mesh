@@ -116,7 +116,9 @@ export function upgradeCommandFor(deps: { core?: CoreSource; version?: string } 
       const data: UpgradeData = { from, to, upgraded: from !== to, written: r.written, removed: r.removed, overwritten, seeds, overrides, commit: null, pushed: false, dryRun };
       if (!dryRun) {
         if (from !== to) await setPin(root, to);
-        data.commit = await commitPaths(root, [...WORKSPACE_CONFIG, ...SEEDS], `Upgrade brain-mesh from ${from} to ${to}`);
+        // Only the template files written now: a kept or Obsidian-rewritten app.json is the user's, not the team's.
+        const seedsWritten = seeds.filter((s) => s.status !== 'kept' && r.written.includes(s.path)).map((s) => s.path);
+        data.commit = await commitPaths(root, [...WORKSPACE_CONFIG, ...seedsWritten], `Upgrade brain-mesh from ${from} to ${to}`);
         const sync = await pullPush(root);
         data.pushed = sync.pushed;
         warnings.push(...sync.warnings);
