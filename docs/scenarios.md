@@ -2,7 +2,7 @@
 
 Spec 10: skills and agents are checked by hand against a fixture workspace before each release, on Claude Code (the reference client); Copilot gets a smoke test. This file holds the scenarios, how to run them and a log of runs.
 
-Chunk 7 adds the personal-brain scenarios (P1–P6), chunk 9 the mount checks (M1–M3) and chunk 10 the shared-brain scenarios (S1–S5). Chunk 12 finalises the list.
+The scenarios: personal brain (P1–P6), mounts (M1–M3), shared brains (S1–S5), upgrade (U1) and the Copilot smoke test (C1–C3). [releasing.md](releasing.md) says which to run for a release.
 
 ## Setup
 
@@ -278,6 +278,36 @@ Runs by hand in the dogfood workspace, from its current pin to the new version (
 - `git status` is clean and `.local/`, `tools/` and `brains/` are unchanged;
 - a hand-edited `brains/.obsidian/app.json` (Obsidian adds its own keys) is `kept` with a diff unless accepted;
 - in the second clone, `sync` warns `W_PIN_CHANGED` and renders nothing, and `init` with the new version re-renders it.
+
+## Copilot smoke test
+
+Runs in VS Code with GitHub Copilot Chat in agent mode, in the scenario workspace from [Setup](#setup) (seeded personal brain). Open the workspace root in VS Code. Approve CLI calls by hand unless the VS Code rule from [getting-started.md](getting-started.md#4-let-your-agent-run-brain-mesh-without-asking) is set; C2 checks that rule.
+
+### C1 Skills and agents load
+
+**Prompt:** `Which skills and custom agents do you have in this workspace?` Also open the agent picker and type `/` in the chat box to see the skills.
+
+**Pass when:**
+- `ask`, `capture`, `contribute` and `ingest` are each listed once, and so are the `consistency-reviewer` and `people-policy-reviewer` agents;
+- if any is listed twice (from `.claude/` and `.github/`): move `.github/skills/` (or `.github/agents/`) out of the workspace, reload the window, and note whether it is still listed once. Put it back afterwards. Record both answers; chunk 12 plan, decision 3 says what follows.
+
+### C2 Capture through the CLI
+
+**Prompt:** the P1 prompt.
+
+**Pass when:**
+- the P1 criteria hold: one new inbox note and a `Capture: <title>` commit pushed to `main`;
+- the note was committed through `npx … commit`, not plain git;
+- with the VS Code auto-approve rule in `.vscode/settings.json`, no CLI call asked for approval.
+
+### C3 Ask a question
+
+**Prompt:** the P5 prompt.
+
+**Pass when:**
+- the answer gives the TTL from `areas/ci/runner-cache-strategy.md` and links the note;
+- the agent called `search` with `--json`;
+- nothing changed (`git status` clean, no new commit).
 
 ## Run log
 

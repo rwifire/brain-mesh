@@ -2,13 +2,15 @@
 
 brain-mesh gives every user an AI workspace with a personal brain and mounted shared team brains, all plain markdown in git, usable from Claude Code, GitHub Copilot and Obsidian. See the [specification](docs/spec.md) and the [glossary](GLOSSARY.md).
 
-## Try the alpha
+## Get started
 
 Needs Node 22.12 or newer, git, and the GitHub CLI (`gh`) logged in. In an empty folder:
 
 ```bash
 npx -y brain-mesh-ai-workspace@next init
 ```
+
+[docs/getting-started.md](docs/getting-started.md) walks through the rest: opening the workspace, letting your agent run the CLI, joining your team's brain, a second machine and upgrading. Releases follow [docs/releasing.md](docs/releasing.md).
 
 This creates a private repo `ai-workspace` on your GitHub account and pushes the workspace to it. Open the folder in Claude Code and ask it to capture a thought, ingest an inbox item, or answer a question from your notes; the folder is also an Obsidian vault. Shared brains can be created, mounted and synced; contributing to them through pull requests comes later.
 
