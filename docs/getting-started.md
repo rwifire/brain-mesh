@@ -48,8 +48,9 @@ Agents call the CLI often, about once per step. Approve brain-mesh once, and onl
 {
   "permissions": {
     "allow": [
-      "Bash(npx -y brain-mesh-ai-workspace@:*)",
-      "PowerShell(npx -y brain-mesh-ai-workspace@:*)"
+      "Bash(npx -y brain-mesh-ai-workspace@*)",
+      "PowerShell(npx -y brain-mesh-ai-workspace@*)",
+      "PowerShell(npx.cmd -y brain-mesh-ai-workspace@*)"
     ]
   }
 }
@@ -105,7 +106,7 @@ Clone your workspace repo, then restore it in the clone:
 
 ```
 git clone <your workspace repo url>
-cd ai-workspace
+cd ai-workspace        # or your repo's name
 npx -y brain-mesh-ai-workspace@<pinned version> init
 ```
 
@@ -121,7 +122,7 @@ npx -y brain-mesh-ai-workspace@<new version> upgrade --dry-run
 
 Then run it without `--dry-run`. It bumps the pin, re-renders the managed files, and commits and pushes. Your notes, `.local/` and `tools/` are never touched. If you edited `.gitattributes` or `brains/.obsidian/app.json`, yours are kept; pass `--accept <path>` to take the new one. Or ask your agent: "Upgrade brain-mesh to <new version>."
 
-On your other machines, run `init` with the new version once.
+On your other machines, run `sync` with the version they have (it pulls the upgrade and warns `W_PIN_CHANGED`), then `init` with the new version.
 
 ## 10. When something goes wrong
 

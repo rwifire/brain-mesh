@@ -4,18 +4,19 @@ import type { Warning } from '../output.js';
 /** Runs the pinned CLI once so its package is in the npx cache. Throws on failure. */
 export type Warm = (pin: string, cwd: string) => Promise<void>;
 
-type Runner = (command: string, args: string[], opts: { cwd: string; timeout: number; shell: boolean }) => Promise<unknown>;
+type Runner = (command: string, args: string[], opts: { cwd: string; timeout: number; shell: boolean; stdio: 'ignore' }) => Promise<unknown>;
 
 /**
  * `npx -y brain-mesh-ai-workspace@<pin> version --json` (chunk 12 plan, decision 1). `init` usually
  * runs as `@next` or `@latest`, and npx caches by spec, so the first skill call would start cold.
- * On Windows npx is `npx.cmd`, which Node only starts through a shell. `BRAIN_MESH_NO_NPX_WARM=1` skips it.
+ * On Windows npx is `npx.cmd`, started through the shell. The output is ignored: on Windows a timeout kills only the
+ * shell, and execa would wait for npx to close the pipes it inherited. `BRAIN_MESH_NO_NPX_WARM=1` skips it.
  */
 export function warmNpxWith(runner: Runner): Warm {
   return async (pin, cwd) => {
     if (process.env.BRAIN_MESH_NO_NPX_WARM === '1') return;
     const win = process.platform === 'win32';
-    await runner(win ? 'npx.cmd' : 'npx', ['-y', `brain-mesh-ai-workspace@${pin}`, 'version', '--json'], { cwd, timeout: 120_000, shell: win });
+    await runner(win ? 'npx.cmd' : 'npx', ['-y', `brain-mesh-ai-workspace@${pin}`, 'version', '--json'], { cwd, timeout: 120_000, shell: win, stdio: 'ignore' });
   };
 }
 

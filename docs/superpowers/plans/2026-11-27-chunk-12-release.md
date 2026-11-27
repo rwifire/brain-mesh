@@ -36,7 +36,7 @@
 
    The rendering change is test-first (Task 4).
 4. **Auto-approve rules** in the docs always include the `@`, so a look-alike package such as `brain-mesh-ai-workspace-x` is never approved:
-   - **Claude Code** (`.claude/settings.json`, which belongs to the user and is committed with the workspace): `"permissions": { "allow": ["Bash(npx -y brain-mesh-ai-workspace@:*)", "PowerShell(npx -y brain-mesh-ai-workspace@:*)"] }`.
+   - **Claude Code** (`.claude/settings.json`, which belongs to the user and is committed with the workspace): `"permissions": { "allow": ["Bash(npx -y brain-mesh-ai-workspace@*)", "PowerShell(npx -y brain-mesh-ai-workspace@*)", "PowerShell(npx.cmd -y brain-mesh-ai-workspace@*)"] }` (final review: `:*` needs a space before it).
    - **VS Code** (workspace `.vscode/settings.json`): `"chat.tools.terminal.autoApprove": { "/^npx(\\.cmd)? -y brain-mesh-ai-workspace@/": true }`.
    - **Checking them:** both rules are checked by hand in Task 4, where a skill call must run without a prompt. If either form is wrong, the docs get the form that works.
 5. **Pilot fixes that are worth it now:**

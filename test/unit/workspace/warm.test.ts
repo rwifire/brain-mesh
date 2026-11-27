@@ -17,7 +17,7 @@ describe('warmNpx', () => {
     await warm('1.2.3', 'C:/my ws');
     const win = process.platform === 'win32';
     expect(calls).toEqual([
-      [win ? 'npx.cmd' : 'npx', ['-y', 'brain-mesh-ai-workspace@1.2.3', 'version', '--json'], { cwd: 'C:/my ws', timeout: 120000, shell: win }],
+      [win ? 'npx.cmd' : 'npx', ['-y', 'brain-mesh-ai-workspace@1.2.3', 'version', '--json'], { cwd: 'C:/my ws', timeout: 120000, shell: win, stdio: 'ignore' }],
     ]);
     process.env.BRAIN_MESH_NO_NPX_WARM = '1';
     await warm('1.2.3', 'C:/my ws');

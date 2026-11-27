@@ -16,14 +16,22 @@ export interface GitOptions {
 
 /**
  * The env for a git call that talks to a remote: no terminal prompt, no Git Credential Manager
- * dialog, and SSH in batch mode unless the user set their own `GIT_SSH_COMMAND`.
+ * dialog, and SSH in batch mode. A user's own ssh client (`GIT_SSH_COMMAND`, `GIT_SSH` or
+ * `core.sshCommand`, passed as `ownSsh`) is kept: git would let our env var win over it.
  */
-export function networkEnv(base: NodeJS.ProcessEnv): Record<string, string> {
+export function networkEnv(base: NodeJS.ProcessEnv, ownSsh = false): Record<string, string> {
+  const keepSsh = ownSsh || base.GIT_SSH_COMMAND !== undefined || base.GIT_SSH !== undefined;
   return {
     GIT_TERMINAL_PROMPT: '0',
     GCM_INTERACTIVE: 'never',
-    ...(base.GIT_SSH_COMMAND === undefined ? { GIT_SSH_COMMAND: 'ssh -o BatchMode=yes' } : {}),
+    ...(keepSsh ? {} : { GIT_SSH_COMMAND: 'ssh -o BatchMode=yes' }),
   };
+}
+
+/** True when git config, as seen from `cwd`, sets `core.sshCommand`. */
+export async function ownSshConfigured(cwd: string): Promise<boolean> {
+  const r = await execa('git', ['config', '--get', 'core.sshCommand'], { cwd, reject: false });
+  return r.exitCode === 0 && String(r.stdout).trim() !== '';
 }
 
 /** Runs git in `cwd`; a non-zero exit is returned, not thrown. */
@@ -32,7 +40,7 @@ export async function git(cwd: string, args: readonly string[], opts: GitOptions
     cwd,
     reject: false,
     stripFinalNewline: true,
-    ...(opts.network === true ? { env: networkEnv(process.env) } : {}),
+    ...(opts.network === true ? { env: networkEnv(process.env, await ownSshConfigured(cwd)) } : {}),
   });
   if (r.exitCode === undefined) throw new CliError(ErrorCode.Git, `git could not be started: ${firstLine(String(r.message))}`);
   return { exitCode: r.exitCode, stdout: String(r.stdout), stderr: String(r.stderr) };

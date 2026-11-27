@@ -38,5 +38,14 @@ describe('docs', () => {
     const rules = text.split('\n').filter((l) => /Bash\(|PowerShell\(|"\/\^npx/.test(l) && l.includes('brain-mesh-ai-workspace'));
     expect(rules.length).toBeGreaterThanOrEqual(3);
     for (const l of rules) expect(l).toContain('brain-mesh-ai-workspace@');
+    // Claude Code: `:*` needs a space before it, so the wildcard follows the `@` directly.
+    for (const l of rules.filter((x) => /Bash\(|PowerShell\(/.test(x))) expect(l).toContain('brain-mesh-ai-workspace@*)');
+    for (const r of ['"Bash(npx -y', '"PowerShell(npx -y', '"PowerShell(npx.cmd -y']) expect(rules.some((l) => l.includes(r)), r).toBe(true);
+  });
+
+  it('other machines sync before init after an upgrade', async () => {
+    const text = await readFile(join(ROOT, 'docs', 'getting-started.md'), 'utf8');
+    const upgrading = text.slice(text.indexOf('## 9. Upgrading'), text.indexOf('## 10.'));
+    expect(upgrading).toMatch(/other machines?[^\n]*`sync`[^\n]*then[^\n]*`init`/i);
   });
 });
