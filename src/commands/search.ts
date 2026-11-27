@@ -34,6 +34,7 @@ export const searchCommand: CommandDef = {
             .map((s) => s.trim())
             .filter((s) => s !== '')
         : undefined;
+    if (brains !== undefined && brains.length === 0) throw new CliError(ErrorCode.Usage, '--brain needs at least one brain id', ExitCode.Usage);
     const ws = await loadWorkspace(root, { parseLinks: false });
     const { data, warnings } = searchWorkspace(ws, args.join(' '), brains === undefined ? { limit } : { brains, limit });
     return { data, text: render(data), warnings: [...warnings, ...ws.warnings] };

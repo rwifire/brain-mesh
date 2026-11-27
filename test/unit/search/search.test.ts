@@ -20,6 +20,36 @@ describe('queryTerms', () => {
 });
 
 describe('searchWorkspace', () => {
+  it('ß and ss find each other', async () => {
+    const w = await ws({
+      'brains/personal/notes/zeta-strasse.md': note('Zebra Straße notes', '# Street\n\nText.\n'),
+      'brains/personal/notes/zeta-upper.md': note('Zebra STRASSE notes', '# Upper\n\nText.\n'),
+      'brains/personal/notes/zeta-mass.md': note('Zebra notes', '# Measure\n\nEine Maẞnahme.\n'),
+    });
+    const both = ['brains/personal/notes/zeta-strasse.md', 'brains/personal/notes/zeta-upper.md'];
+    expect(paths(searchWorkspace(w, 'zebra strasse')).sort()).toEqual(both);
+    expect(paths(searchWorkspace(w, 'zebra straße')).sort()).toEqual(both);
+    expect(paths(searchWorkspace(w, 'massnahme'))).toEqual(['brains/personal/notes/zeta-mass.md']);
+  });
+
+  it('a trailing # stays in the title', async () => {
+    const w = await ws({
+      'brains/personal/notes/zeta-csharp.md': note('Zebracsharp tips', '# Use C#\n\nText.\n'),
+      'brains/personal/notes/zeta-done.md': note('Zebradone', '# Done ##\n\nText.\n'),
+    });
+    expect(searchWorkspace(w, 'zebracsharp').data.hits[0]!.title).toBe('Use C#');
+    expect(searchWorkspace(w, 'zebradone').data.hits[0]!.title).toBe('Done');
+  });
+
+  it('a fenced comment is not the title', async () => {
+    const w = await ws({
+      'brains/personal/notes/zeta-fence.md': note('Zebrafence', '```sh\n# comment\n```\n\n# Real\n\nText.\n'),
+      'brains/personal/notes/zeta-tilde.md': note('Zebratilde', '~~~\n# comment\n~~~\n\nText only.\n'),
+    });
+    expect(searchWorkspace(w, 'zebrafence').data.hits[0]!.title).toBe('Real');
+    expect(searchWorkspace(w, 'zebratilde').data.hits[0]!.title).toBe('zeta-tilde');
+  });
+
   it('summary matches rank first', async () => {
     const w = await ws({
       'brains/personal/notes/zeta-a.md': note('Zebracache quokkarunner strategy', '# Strategy\n\nShort.\n'),

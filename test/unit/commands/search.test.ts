@@ -20,6 +20,15 @@ describe('search command', () => {
     expect(r.json().error.code).toBe('E_USAGE');
   });
 
+  it('an empty --brain is a usage error', async () => {
+    const root = await fullWorkspace();
+    for (const b of ['', ',']) {
+      const r = await run(['search', 'zebracache', '--brain', b, '--json'], root);
+      expect(r.code, b).toBe(2);
+      expect(r.json().error).toMatchObject({ code: 'E_USAGE', message: '--brain needs at least one brain id' });
+    }
+  });
+
   it('--brain and --limit', async () => {
     const root = await fullWorkspace();
     await writeFiles(root, {
