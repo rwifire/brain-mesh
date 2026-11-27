@@ -242,3 +242,11 @@ The team case was skipped: the account has no org team. So whether the team-repo
 **Answer:** Scenarios S1, S2b, S3, S4 and S5 pass on Claude Code 2.1.325, and S2 passes in part: the PR round trip against github.com, the people-policy reviewer, the read-only mount and the consistency reviewer all behave as specified. The brain's own `AGENTS.md` keeps a judgement out of a note the agent writes before the reviewer runs. So the reviewer only catches judgements in text the user wrote, which is where it is needed.
 **Source:** the [run log](../scenarios.md#run-log) · **Checked:** 2026-11-27, 0.1.0-alpha.5, Windows
 **Consequence for brain-mesh:** S2 was rewritten. Overrides apply only to a flag the user calls a false positive. One run offered "keep it with a reason" more loosely than the skill says; chunk 11 or 12 can tighten that wording in the contribute skill.
+
+## Chunk 11 checks
+
+### Upgrading a real workspace
+**Answer:** `upgrade` moved the dogfood workspace from 0.1.0-alpha.4 to alpha.6. The dry run listed 19 managed files to re-render, with the new `contribute` skill and no hand edits, template files or overrides, and changed nothing. The real run made one pushed commit of `mesh.yaml`, `AGENTS.md` and `.gitignore`, and left `.local/`, `tools/` and `brains/` alone. Obsidian had not rewritten `brains/.obsidian/app.json`: it was unchanged since the workspace was created, and the seed had not changed upstream, so it was not offered. The run was quick enough that no one timed it.
+A second clone with alpha.4, which predates the `sync` guard, pulled the upgrade and rendered its old `AGENTS.md` and `.gitignore` under the new pin. Nothing was committed, and `init` with alpha.6 put the new files back.
+**Source:** the [run log](../scenarios.md#run-log) · **Checked:** 2026-11-27, 0.1.0-alpha.6, Windows
+**Consequence for brain-mesh:** The mixed render from an old CLI is real, which is why from alpha.6 `sync` warns `W_PIN_CHANGED` instead of rendering and `mount`, `unmount`, `brain new` and `brain publish` refuse with `E_PIN_MISMATCH` (chunk 11 final review). Workspaces still on alpha.5 or older stay exposed until they upgrade. The guard's first hand check is the alpha.6 → alpha.7 upgrade (chunk 12).

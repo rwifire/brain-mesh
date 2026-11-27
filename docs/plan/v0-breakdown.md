@@ -50,7 +50,7 @@ Chunk 10 status: done. `commit <brain>` routes (PR, direct, refused), the `contr
 | 11 | **`upgrade`.** Bump pin, re-render from the render record, diff for hand-edited template files, warning for overridden skills. | Upgrading the dogfood workspace between two core versions keeps every user file and shows the expected diffs. |
 | 12 | **Release and pilot.** Copilot smoke test, scenario checklist and fixture workspace finalised, docs (requirements incl. `gh`, getting started), npm release, pilot team onboarded. | A pilot team member goes from nothing to a working workspace with the published package and the docs alone. |
 
-Chunk 11 status: `upgrade` (pin bump, re-render from the render record, diffs for hand edits, template files and overrides) and the `sync` guard after a pin change are in; the U1 run on the dogfood workspace is pending (plan Task 5).
+Chunk 11 status: done. `upgrade` (pin bump, re-render from the render record, diffs for hand edits, template files and overrides), the `sync` guard after a pin change, and the `E_PIN_MISMATCH` refusal in `mount`, `unmount`, `brain new` and `brain publish` are in. U1 ran on the dogfood workspace from alpha.4 to alpha.6; the old-CLI guard step can first be checked by hand on the alpha.6 → alpha.7 upgrade (chunk 12).
 
 ## Dependencies
 
