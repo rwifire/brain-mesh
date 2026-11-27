@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { parse } from 'yaml';
 import { describe, expect, it } from 'vitest';
@@ -10,13 +10,13 @@ import { read } from '../../helpers/cli.js';
 import { cliCallError } from '../../helpers/cli-lint.js';
 import { tempDir } from '../../helpers/fixtures.js';
 
-const NAMES = ['ask', 'capture', 'ingest'];
+const NAMES = ['ask', 'capture', 'contribute', 'ingest'];
 
 const skill = (name: string) => readFile(join(packageCore().skillsDir, name, 'SKILL.md'), 'utf8');
 const frontmatter = async (name: string) => parse(splitFrontmatter(await skill(name)).yaml ?? '') as Record<string, unknown>;
 
 describe('core skills', () => {
-  it('the core ships capture, ingest and ask', async () => {
+  it('the core ships capture, ingest, ask and contribute', async () => {
     const r = await readSkills(packageCore().skillsDir, 'core');
     expect(r.problems).toEqual([]);
     expect(r.skills.map((s) => s.name)).toEqual(NAMES);
@@ -89,6 +89,37 @@ describe('core skills', () => {
     expect(text).toContain('npx -y brain-mesh-ai-workspace@0.4.2 search');
     expect(text).not.toContain('{{');
     for (const n of NAMES) expect(await read(root, `.github/skills/${n}/SKILL.md`)).not.toContain('{{');
+  });
+
+  it('contribute follows 5.6 and 7.2', async () => {
+    const text = await skill('contribute');
+    for (const s of [
+      '`{{cli}} mounts --json`',
+      '`{{cli}} doctor <id> --fix --json`',
+      '`{{cli}} commit <id> --dry-run -m "<title>" --json`',
+      '`{{cli}} commit <id> -m "<title>" --body "<why>" --json`',
+      'people-policy-reviewer',
+      'override',
+      'read',
+    ]) {
+      expect(text, s).toContain(s);
+    }
+  });
+
+  it('ingest can contribute', async () => {
+    const text = await skill('ingest');
+    for (const s of ['`contribute` skill', '{{cli}} mounts --json', 'PR URL', '`read`']) expect(text, s).toContain(s);
+  });
+
+  it('ask routes with mounts', async () => {
+    expect(await skill('ask')).toContain('{{cli}} mounts --json');
+  });
+
+  it('skills name only real agents', async () => {
+    const agents = (await readdir(packageCore().agentsDir)).map((f) => f.replace(/\.md$/, ''));
+    for (const n of NAMES) {
+      for (const [name] of (await skill(n)).matchAll(/[a-z-]+-reviewer/g)) expect(agents, `${n}: ${name}`).toContain(name);
+    }
   });
 
   it('no skill pre-approves the shell', async () => {

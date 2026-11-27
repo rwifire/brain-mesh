@@ -8,7 +8,7 @@ Ask never writes: no file is created, changed or committed.
 
 ## 1. Route
 
-- Read the mount table in the workspace `AGENTS.md`: every mounted brain with its mode and description.
+- List every mounted brain with its mode and description: `{{cli}} mounts --json`. Brains with `cloned: false` have no local copy yet; leave them out and say so.
 - For the brains that might hold the answer, read `brains/<id>/brain.yaml`: `description`, `topics` and `out_of_scope`. Pick the candidates; always include `personal` when the question could be about the user's own notes.
 
 ## 2. Narrow
