@@ -45,6 +45,19 @@ describe('commit', () => {
     expect(await git(root, 'status', '--porcelain')).toBe(before);
   });
 
+  it('a failed git commit leaves nothing staged', async () => {
+    const { root } = await setup();
+    const hooks = await tempDir('bm hooks ');
+    await writeTree(hooks, { 'pre-commit': '#!/bin/sh\necho "hook says no" >&2\nexit 1\n' });
+    await git(root, 'config', 'core.hooksPath', hooks.replace(/\\/g, '/'));
+    await writeTree(root, { 'brains/personal/inbox/a.md': '# A\n' });
+    const r = await commit(root, '-m', 'Capture a');
+    expect(r.code, r.out).not.toBe(0);
+    expect(r.json().error.code).toBe('E_GIT');
+    expect(r.json().error.message).toContain('git commit failed');
+    expect((await git(root, 'diff', '--cached', '--name-only')).trim()).toBe('');
+  });
+
   it('a blank first line is refused', async () => {
     const { root } = await setup();
     await writeTree(root, { 'brains/personal/inbox/a.md': '# A\n' });

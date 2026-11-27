@@ -2,7 +2,7 @@ import { stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { assertGate, brainChanges, hasLocalCommits } from '../contribute/gate.js';
 import { contributePr } from '../contribute/pr.js';
-import { gitOk } from '../git.js';
+import { git, gitOk } from '../git.js';
 import type { Host } from '../host/host.js';
 import type { CommandDef } from '../main.js';
 import { CliError, ErrorCode, ExitCode, type Warning } from '../output.js';
@@ -54,7 +54,12 @@ async function commitPersonal(root: string, message: string, dryRun: boolean): P
   let files: string[] = [];
   if (changed) {
     await gitOk(root, ['add', '-A', '--', PERSONAL]);
-    await gitOk(root, ['commit', '-q', '-m', message, '--', PERSONAL]);
+    const commit = await git(root, ['commit', '-q', '-m', message, '--', PERSONAL]);
+    if (commit.exitCode !== 0) {
+      // Leave the index as it was: nothing of the failed commit stays staged.
+      await git(root, ['reset', '-q', '--', PERSONAL]);
+      throw new CliError(ErrorCode.Git, `git commit failed: ${commit.stderr.trim().split('\n')[0]!.trim() || `exit ${commit.exitCode}`}`);
+    }
     files = (await gitOk(root, ['show', '--name-only', '--format=', '-z', 'HEAD'])).split('\0').filter((f) => f !== '');
   }
   const { pushed, warnings: syncWarnings } = await pullPush(root);

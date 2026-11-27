@@ -71,7 +71,10 @@ export async function pullPush(root: string): Promise<{ pushed: boolean; warning
       if (!stashed) return;
       const pop = await git(root, ['stash', 'pop', '-q', '--index']);
       if (pop.exitCode !== 0) {
-        warnings.push({ code: 'W_STASH_KEPT', message: `your other changes could not be restored and are kept in git stash: ${firstLine(pop.stderr)}` });
+        warnings.push({
+          code: 'W_STASH_KEPT',
+          message: `restoring your other changes conflicted (${firstLine(pop.stderr) || 'git stash pop failed'}): the files may hold conflict markers, and the changes are still in git stash; check git status and git stash list`,
+        });
       }
     };
     const pull = await git(root, ['pull', '-q', '--rebase'], { network: true });
