@@ -1,4 +1,4 @@
-import { mkdir, stat } from 'node:fs/promises';
+import { chmod, mkdir, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { initCommand } from '../../../src/commands/init.js';
@@ -49,6 +49,7 @@ describe('commit', () => {
     const { root } = await setup();
     const hooks = await tempDir('bm hooks ');
     await writeTree(hooks, { 'pre-commit': '#!/bin/sh\necho "hook says no" >&2\nexit 1\n' });
+    await chmod(join(hooks, 'pre-commit'), 0o755); // git skips a hook without the executable bit on POSIX
     await git(root, 'config', 'core.hooksPath', hooks.replace(/\\/g, '/'));
     await writeTree(root, { 'brains/personal/inbox/a.md': '# A\n' });
     const r = await commit(root, '-m', 'Capture a');
