@@ -34,7 +34,7 @@ Read `brains/<id>/brain.yaml`. When its `policies.people` is `accountability`, h
 
 - `NO FLAGS`: go on.
 - For each `FLAG` line: show it to the user and fix the passage together, usually by keeping only the responsibility, decision or outcome.
-- A flag the user calls a false positive stays only with their reason. Collect those for the body as an override:
+- Only a flag the user calls a false positive can be overridden, and only with their reason; a real judgement is reworded or removed. Collect the overrides for the body:
 
   ```
   People-policy overrides:

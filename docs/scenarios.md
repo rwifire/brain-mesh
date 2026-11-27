@@ -2,7 +2,7 @@
 
 Spec 10: skills and agents are checked by hand against a fixture workspace before each release, on Claude Code (the reference client); Copilot gets a smoke test. This file holds the scenarios, how to run them and a log of runs.
 
-Chunk 7 adds the personal-brain scenarios (P1–P6), chunk 9 the mount checks (M1–M3) and chunk 10 the shared-brain scenarios (S1–S5). Chunk 12 finalises the list.
+The scenarios: personal brain (P1–P6), mounts (M1–M3), shared brains (S1–S5), upgrade (U1) and the Copilot smoke test (C1–C3). [releasing.md](releasing.md) says which to run for a release.
 
 ## Setup
 
@@ -279,6 +279,36 @@ Runs by hand in the dogfood workspace, from its current pin to the new version (
 - a hand-edited `brains/.obsidian/app.json` (Obsidian adds its own keys) is `kept` with a diff unless accepted;
 - in the second clone, `sync` warns `W_PIN_CHANGED` and renders nothing, and `init` with the new version re-renders it.
 
+## Copilot smoke test
+
+Runs in VS Code with GitHub Copilot Chat in agent mode, in the scenario workspace from [Setup](#setup) (seeded personal brain). Open the workspace root in VS Code. Approve CLI calls by hand unless the VS Code rule from [getting-started.md](getting-started.md#4-let-your-agent-run-brain-mesh-without-asking) is set; C2 checks that rule.
+
+### C1 Skills and agents load
+
+**Prompt:** `Which skills and custom agents do you have in this workspace?` Also open the agent picker and type `/` in the chat box to see the skills.
+
+**Pass when:**
+- `ask`, `capture`, `contribute` and `ingest` are each listed once, and so are the `consistency-reviewer` and `people-policy-reviewer` agents;
+- if any is listed twice (from `.claude/` and `.github/`): move `.github/skills/` (or `.github/agents/`) out of the workspace, reload the window, and note whether it is still listed once. Put it back afterwards. Record both answers; chunk 12 plan, decision 3 says what follows.
+
+### C2 Capture through the CLI
+
+**Prompt:** the P1 prompt.
+
+**Pass when:**
+- the P1 criteria hold: one new inbox note and a `Capture: <title>` commit pushed to `main`;
+- the note was committed through `npx … commit`, not plain git;
+- with the VS Code auto-approve rule in `.vscode/settings.json`, no CLI call asked for approval.
+
+### C3 Ask a question
+
+**Prompt:** the P5 prompt.
+
+**Pass when:**
+- the answer gives the TTL from `areas/ci/runner-cache-strategy.md` and links the note;
+- the agent called `search` with `--json`;
+- nothing changed (`git status` clean, no new commit).
+
 ## Run log
 
 | Date | Version | Scenario | Result | Notes |
@@ -306,3 +336,9 @@ Runs by hand in the dogfood workspace, from its current pin to the new version (
 | 2026-11-27 | 0.1.0-alpha.5 | S4 | pass | Declined to edit the `read` mount, showed the diff, offered to remount it as `contribute` (asking first) or to leave the change to the owners; `brain-handbook` unchanged. |
 | 2026-11-27 | 0.1.0-alpha.5 | S5 | pass | The consistency-reviewer reported the 14- vs 7-day contradiction with `cache-ttl-decision.md` as newer (and the README pointing at the stale note) and the flaky-test duplicate; no file changed. Claude Code 2.1.325, gh 2.100.0. |
 | 2026-11-27 | 0.1.0-alpha.6 | U1 | partial | From 0.1.0-alpha.4. Dry run: 19 managed files to re-render (`contribute` new), no hand edits, template files or overrides; nothing changed. The upgrade committed only `mesh.yaml`, `AGENTS.md` and `.gitignore` and pushed; `git status` clean, `.local/`, `tools/` and `brains/` untouched; `app.json` not rewritten by Obsidian, so not offered. Second clone: alpha.4 has no `sync` guard, so its `init`/`sync` pulled the upgrade and rendered its old `AGENTS.md` and `.gitignore` under the new pin (uncommitted); `init` with alpha.6 re-rendered them, tree clean. The `W_PIN_CHANGED` step can only run from alpha.6 on; it is covered by unit tests until then. |
+| 2026-11-27 | 0.1.0-alpha.7 | U1 | pass | The guard step, from alpha.6. `rwifire/my-brain-mesh` was deleted, so a new alpha.6 workspace pushing to a local bare repo stood in; it has no mounts, which the guard does not depend on. Clone A's `upgrade` made one pushed commit; clone B's alpha.6 `sync` pulled it, warned `W_PIN_CHANGED` with the alpha.7 `init` command, and left `git status` clean; alpha.7 `init` restored, doctor 0/0, tree clean. |
+| 2026-11-27 | 0.1.0-alpha.7 | Warm-up | pass | New workspace with a local bare remote: `init` 3.8 s including the warm-up; the first pinned call (`version --json`) 1.2 s afterwards. |
+| 2026-11-27 | 0.1.0-alpha.7 | Auto-approve | pass | Claude Code: the three `permissions.allow` rules from the getting-started guide were ignored until the folder was trusted (`claude -p` read the files instead of searching). After accepting the trust dialog once, `claude -p` ran the pinned `search … --json` with no prompt; the answer cited both notes and the 7- vs 3-day conflict. The guide now says to trust the folder. |
+| 2026-11-27 | 0.1.0-alpha.7 | C1 | pass | VS Code Copilot Chat, agent mode: each skill and custom agent listed once, with both `.claude/` and `.github/` rendered. |
+| 2026-11-27 | 0.1.0-alpha.7 | C2 | pass | Capture went through `npx … commit` with no approval prompt under the `chat.tools.terminal.autoApprove` rule; one pushed commit. |
+| 2026-11-27 | 0.1.0-alpha.7 | C3 | pass | Answered via `search --json`, citing `runner-cache-strategy.md`; nothing changed. |

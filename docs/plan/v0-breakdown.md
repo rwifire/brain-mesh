@@ -50,7 +50,7 @@ Chunk 10 status: done. `commit <brain>` routes (PR, direct, refused), the `contr
 | 11 | **`upgrade`.** Bump pin, re-render from the render record, diff for hand-edited template files, warning for overridden skills. | Upgrading the dogfood workspace between two core versions keeps every user file and shows the expected diffs. |
 | 12 | **Release and pilot.** Copilot smoke test, scenario checklist and fixture workspace finalised, docs (requirements incl. `gh`, getting started), npm release, pilot team onboarded. | A pilot team member goes from nothing to a working workspace with the published package and the docs alone. |
 
-Chunk 11 status: done. `upgrade` (pin bump, re-render from the render record, diffs for hand edits, template files and overrides), the `sync` guard after a pin change, and the `E_PIN_MISMATCH` refusal in `mount`, `unmount`, `brain new` and `brain publish` are in. U1 ran on the dogfood workspace from alpha.4 to alpha.6; the old-CLI guard step can first be checked by hand on the alpha.6 → alpha.7 upgrade (chunk 12).
+Chunk 11 status: done. `upgrade` (pin bump, re-render from the render record, diffs for hand edits, template files and overrides), the `sync` guard after a pin change, and the `E_PIN_MISMATCH` refusal in `mount`, `unmount`, `brain new` and `brain publish` are in. U1 ran on the dogfood workspace from alpha.4 to alpha.6; the old-CLI guard step passed by hand on the alpha.6 → alpha.7 upgrade (chunk 12).
 
 ## Dependencies
 
@@ -67,8 +67,8 @@ Open points from the [chunk 1 research](../research/2026-11-chunk-01-research.md
 
 - **Chunk 2 (done):** pre-commit hook mechanism passes on Linux and Windows in CI; `npx` from the packed tarball: Linux cold 1.0–1.3 s, cached 0.4–0.5 s; Windows runners cold 6.6–10.6 s, cached 0.9–1.3 s ([run 45052385422](https://github.com/rwifire/brain-mesh/actions/runs/45052385422)).
 - **Chunk 5 (done):** a brain's `CLAUDE.md` = `@AGENTS.md` loads on demand in Claude Code 2.1.325 (verified); `npx` cold start of the package with templates recorded; the Copilot CLI duplicate-skill question moved to chunk 12. See the [chunk 5 checks](../research/2026-11-chunk-01-research.md#chunk-5-checks).
-- **Chunk 12:** `init` warms the `npx` cache with one call ([research Q4.4](../research/2026-11-chunk-01-research.md)); moved from chunk 6 because the pin can't be fetched before the release.
-- **Chunk 12:** does Copilot CLI show duplicates when a skill exists in both `.claude/skills/` and `.github/skills/`? Checked in the Copilot smoke test; if it does, render skills for Copilot CLI only into `.github/skills/` and document it.
+- **Chunk 12 (done):** `init` warms the `npx` cache with one call; the first pinned call then takes 1.2 s on Windows. See the [chunk 12 checks](../research/2026-11-chunk-01-research.md#chunk-12-checks).
+- **Chunk 12 (done for VS Code):** VS Code Copilot lists each skill and agent once with both `.claude/` and `.github/` rendered, so both stay. Copilot CLI is unchecked: not installed on the dogfood machine. See the [chunk 12 checks](../research/2026-11-chunk-01-research.md#chunk-12-checks).
 - **Chunk 6 (done):** `init` and the pre-commit hook; see the [chunk 6 checks](../research/2026-11-chunk-01-research.md#chunk-6-checks).
 - **Chunk 7:** the pre-commit hook fires from VS Code and Obsidian-git commits on Windows (moved from chunk 6). Ramon checks while dogfooding.
 - **Chunk 7 (done):** the dogfood pin is a published alpha: 0.1.0-alpha.2 on npm under `next`, as `brain-mesh-ai-workspace` (npm refused `brain-mesh` as too similar to `brainmesh`); the command stays `brain-mesh`. The personal scenarios pass on Claude Code 2.1.325 ([run log](../scenarios.md#run-log)).
@@ -208,3 +208,16 @@ From the [chunk 9 plan](../superpowers/plans/2026-11-26-chunk-09-mount-lifecycle
   - `commit` reads `mesh.yaml` twice;
   - the dry run's `files` leave out regenerated files.
 - [ ] The contribute skill's override wording: one S2b run offered "keep it with a reason" for a real judgement; say plainly that only a false positive can be overridden.
+
+## Deferred minors from chunk 11
+
+From the [chunk 11 plan](../superpowers/plans/2026-11-27-chunk-11-upgrade.md) final review.
+
+- [ ] A kept `app.json`'s diff shows the raw seed, not what `--accept`'s merge would write; show `mergeJson(current, seed)`.
+- [ ] A non-upgrade render records the new seed's sha for an edited seed, so a kept seed isn't offered again until upstream changes it; keep the previous entry instead.
+- [ ] "Already on X" doesn't say that a pending commit was pushed.
+- [ ] Override detection compares only `SKILL.md`, not a skill's other files.
+- [ ] A dry run can still chmod an unchanged hook on POSIX (`makeExecutable` is not gated by `doWrite`).
+- [ ] A failed write is still reported as overwritten with `W_HAND_EDIT_OVERWRITTEN`.
+- [ ] If the commit fails after `setPin`, a re-run commits "from X to X"; take `from` from the render record.
+- [ ] `--accept ./brains/.obsidian/app.json` is a usage error; strip a leading `./`.

@@ -10,13 +10,14 @@ import { searchCommand } from './search.js';
 import { syncCommand } from './sync.js';
 import { upgradeCommandFor } from './upgrade.js';
 import { versionCommand } from './version.js';
+import type { Warm } from '../workspace/warm.js';
 
 /** Every command, with the ones that talk to the git host on `host`. */
-export function commandsFor(host: Host): readonly CommandDef[] {
+export function commandsFor(host: Host, warm?: Warm): readonly CommandDef[] {
   return [
     versionCommand,
     doctorCommand({ host }),
-    initCommand({ host }),
+    initCommand({ host, ...(warm === undefined ? {} : { warm }) }),
     commitCommandFor({ host }),
     searchCommand,
     mountCommand({ host }),

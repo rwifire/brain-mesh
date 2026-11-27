@@ -26,6 +26,44 @@ async function setup() {
 const init = (folder: string, host: ReturnType<typeof fakeHost>, ...args: string[]) =>
   run(['init', ...args, '--json'], folder, [initCommand({ host })]);
 
+/** A warm-up that records its calls, or fails when `fail` is set. */
+function recordingWarm(fail = false) {
+  const calls: [string, string][] = [];
+  const warm = async (pin: string, cwd: string) => {
+    calls.push([pin, cwd]);
+    if (fail) throw new Error('offline');
+  };
+  return { calls, warm };
+}
+
+describe('npx warm-up', () => {
+  it('warms the npx cache for the pin', async () => {
+    await isolateGit();
+    const { folder, bare } = await setup();
+    const w = recordingWarm();
+    const r = await run(['init', '--remote', bare, '--json'], folder, [initCommand({ host: fakeHost(), warm: w.warm })]);
+    expect(r.code, r.out).toBe(0);
+    expect(w.calls).toEqual([[PKG_VERSION, folder]]);
+
+    const clone = join(await tempDir('bm warm '), 'ws');
+    await git(join(clone, '..'), 'clone', '-q', '-b', 'main', bare, 'ws');
+    const again = recordingWarm();
+    const restored = await run(['init', '--json'], clone, [initCommand({ host: fakeHost(), warm: again.warm })]);
+    expect(restored.code, restored.out).toBe(0);
+    expect(again.calls).toEqual([[PKG_VERSION, clone]]);
+  });
+
+  it('a failed warm-up is a warning', async () => {
+    await isolateGit();
+    const { folder, bare } = await setup();
+    const w = recordingWarm(true);
+    const r = await run(['init', '--remote', bare, '--json'], folder, [initCommand({ host: fakeHost(), warm: w.warm })]);
+    expect(r.code, r.out).toBe(0);
+    const warn = (r.json().warnings as { code: string; message: string }[]).find((x) => x.code === 'W_NPX_WARM_FAILED');
+    expect(warn?.message).toContain('first agent call');
+  });
+});
+
 describe('init', () => {
   it('creates, commits and pushes', async () => {
     await isolateGit();

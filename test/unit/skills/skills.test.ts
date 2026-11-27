@@ -108,6 +108,12 @@ describe('core skills', () => {
     }
   });
 
+  it('only a false positive can be overridden', async () => {
+    const text = await skill('contribute');
+    expect(text).toContain('Only a flag the user calls a false positive can be overridden');
+    expect(text).not.toContain('keep it with a reason');
+  });
+
   it('ingest can contribute', async () => {
     const text = await skill('ingest');
     for (const s of ['`contribute` skill', '{{cli}} mounts --json', 'PR URL', '`read`']) expect(text, s).toContain(s);
