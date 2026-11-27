@@ -8,6 +8,7 @@ This folder is a brain-mesh workspace. Brains are folders of markdown notes in `
 - Each brain in `brains/<id>/` has its own `AGENTS.md` with its rules; read it before you write there.
 - `brains/personal/` is the user's private brain. Never copy personal notes or raw transcripts into a shared brain, and never link to the personal brain from one.
 - Use the CLI for every deterministic action, with `--json`: `{{cli}} <command> --json`. Batch work into few calls; each takes about a second.
+- Shared brains change only through the `contribute` skill (a pull request, or a direct commit while unpublished). Never edit a brain mounted `read`.
 - After writing notes, run `{{cli}} doctor --fix --json` and fix what it still reports before you commit.
 - Do not edit `.mesh/`, the generated skill and agent folders in `.claude/` and `.github/`, or text between `brain-mesh` markers; they are regenerated.
 

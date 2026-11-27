@@ -1,7 +1,6 @@
 import { mkdir, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { commitCommand } from '../../../src/commands/commit.js';
 import { initCommand } from '../../../src/commands/init.js';
 import { read, run } from '../../helpers/cli.js';
 import { tempDir, writeTree } from '../../helpers/fixtures.js';
@@ -25,7 +24,7 @@ async function setup() {
   return { root, bare, other };
 }
 
-const commit = (root: string, ...args: string[]) => run(['commit', ...args, '--json'], root, [commitCommand]);
+const commit = (root: string, ...args: string[]) => run(['commit', ...args, '--json'], root);
 
 /** Commits `tree` in `dir` and pushes it, as the other machine would. */
 async function pushFrom(dir: string, tree: Record<string, string>) {
@@ -148,15 +147,15 @@ describe('commit', () => {
   it('human output', async () => {
     const { root } = await setup();
     await writeTree(root, { 'brains/personal/inbox/a.md': '# A\n' });
-    const r = await run(['commit', '-m', 'Capture a'], root, [commitCommand]);
+    const r = await run(['commit', '-m', 'Capture a'], root);
     const sha = (await git(root, 'rev-parse', 'HEAD')).slice(0, 7);
     expect(r.out).toBe(`Committed 1 file in brains/personal/ (${sha}) and pushed.\n`);
-    expect((await run(['commit', '-m', 'x'], root, [commitCommand])).out).toBe('Nothing to commit in brains/personal/.\n');
+    expect((await run(['commit', '-m', 'x'], root)).out).toBe('Nothing to commit in brains/personal/.\n');
   });
 
-  it('shared brain id is not supported', async () => {
+  it('a brain that is not mounted is unknown', async () => {
     const { root } = await setup();
-    expect((await commit(root, 'brain-team-platform', '-m', 'x')).json().error.code).toBe('E_NOT_SUPPORTED');
+    expect((await commit(root, 'brain-team-platform', '-m', 'x')).json().error.code).toBe('E_UNKNOWN_BRAIN');
   });
 
   it('message is required', async () => {

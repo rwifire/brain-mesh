@@ -1,6 +1,5 @@
-import { readFile } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { Command } from 'commander';
 import { parse } from 'yaml';
 import { describe, expect, it } from 'vitest';
 import { splitFrontmatter } from '../../../src/brain/frontmatter.js';
@@ -8,33 +7,16 @@ import { defaultCommands } from '../../../src/commands/index.js';
 import { packageCore, readSkills } from '../../../src/render/core.js';
 import { createWorkspace } from '../../../src/workspace/create.js';
 import { read } from '../../helpers/cli.js';
+import { cliCallError } from '../../helpers/cli-lint.js';
 import { tempDir } from '../../helpers/fixtures.js';
 
-const NAMES = ['ask', 'capture', 'ingest'];
+const NAMES = ['ask', 'capture', 'contribute', 'ingest'];
 
-/** Parses a skill's `{{cli}} …` call with the real command definition; returns commander's error, or null. */
-function cliCallError(call: string): string | null {
-  const tokens = [...call.matchAll(/"[^"]*"|\S+/g)].map((m) => (m[0].startsWith('"') ? 'x' : m[0].replace(/<[^>]*>/g, 'x')));
-  const def = defaultCommands.find((c) => c.name === tokens[0]);
-  if (def === undefined) return `unknown command ${tokens[0]}`;
-  const cmd = new Command(def.name)
-    .option('--json')
-    .exitOverride()
-    .configureOutput({ writeOut: () => {}, writeErr: () => {} });
-  def.configure?.(cmd);
-  cmd.action(() => {});
-  try {
-    cmd.parse(tokens.slice(1), { from: 'user' });
-    return null;
-  } catch (e) {
-    return (e as Error).message;
-  }
-}
 const skill = (name: string) => readFile(join(packageCore().skillsDir, name, 'SKILL.md'), 'utf8');
 const frontmatter = async (name: string) => parse(splitFrontmatter(await skill(name)).yaml ?? '') as Record<string, unknown>;
 
 describe('core skills', () => {
-  it('the core ships capture, ingest and ask', async () => {
+  it('the core ships capture, ingest, ask and contribute', async () => {
     const r = await readSkills(packageCore().skillsDir, 'core');
     expect(r.problems).toEqual([]);
     expect(r.skills.map((s) => s.name)).toEqual(NAMES);
@@ -107,6 +89,39 @@ describe('core skills', () => {
     expect(text).toContain('npx -y brain-mesh-ai-workspace@0.4.2 search');
     expect(text).not.toContain('{{');
     for (const n of NAMES) expect(await read(root, `.github/skills/${n}/SKILL.md`)).not.toContain('{{');
+  });
+
+  it('contribute follows 5.6 and 7.2', async () => {
+    const text = await skill('contribute');
+    for (const s of [
+      '`{{cli}} mounts --json`',
+      '`{{cli}} doctor <id> --fix --json`',
+      '`{{cli}} commit <id> --dry-run -m "<title>" --json`',
+      '`{{cli}} commit <id> -m "<title>" --body "<why>" --json`',
+      'people-policy-reviewer',
+      'override',
+      'read',
+      'E_SYNC_CONFLICT',
+      'E_DOCTOR_ERRORS',
+    ]) {
+      expect(text, s).toContain(s);
+    }
+  });
+
+  it('ingest can contribute', async () => {
+    const text = await skill('ingest');
+    for (const s of ['`contribute` skill', '{{cli}} mounts --json', 'PR URL', '`read`']) expect(text, s).toContain(s);
+  });
+
+  it('ask routes with mounts', async () => {
+    expect(await skill('ask')).toContain('{{cli}} mounts --json');
+  });
+
+  it('skills name only real agents', async () => {
+    const agents = (await readdir(packageCore().agentsDir)).map((f) => f.replace(/\.md$/, ''));
+    for (const n of NAMES) {
+      for (const [name] of (await skill(n)).matchAll(/[a-z-]+-reviewer/g)) expect(agents, `${n}: ${name}`).toContain(name);
+    }
   });
 
   it('no skill pre-approves the shell', async () => {

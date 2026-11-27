@@ -1,21 +1,12 @@
-import { lstat, mkdir, writeFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
-import type { CheckCode } from '../doctor/codes.js';
 import { sortFindings, type Finding } from '../doctor/finding.js';
+import { fixGenerated, type FixedFile } from '../doctor/fix.js';
 import { hostChecks } from '../doctor/host-checks.js';
 import { runChecks } from '../doctor/run.js';
-import { planGenerated } from '../generate/plan.js';
 import type { Host } from '../host/host.js';
 import type { CommandDef } from '../main.js';
 import { CliError, ErrorCode, ExitCode, type Warning } from '../output.js';
 import { findWorkspaceRoot } from '../workspace/find.js';
 import { loadWorkspace, type WorkspaceModel } from '../workspace/load.js';
-
-export interface FixedFile {
-  code: CheckCode;
-  /** Workspace-relative POSIX path. */
-  path: string;
-}
 
 export interface DoctorData {
   root: string;
@@ -44,34 +35,6 @@ function render(data: DoctorData): string {
   return lines.join('\n');
 }
 
-/**
- * Writes every out-of-date generated file of `brain` (or of all brains). A file that cannot be
- * written becomes a warning and the rest are still written. Creates never replace an existing
- * entry, and nothing is written through a symbolic link.
- */
-async function fix(ws: WorkspaceModel, brain: string | undefined): Promise<{ fixed: FixedFile[]; warnings: Warning[] }> {
-  const fixed: FixedFile[] = [];
-  const warnings: Warning[] = [];
-  for (const file of planGenerated(ws, brain).files) {
-    if (file.next === file.current) continue;
-    const abs = join(ws.root, ...file.path.split('/'));
-    try {
-      if (file.current === null) {
-        await mkdir(dirname(abs), { recursive: true });
-        await writeFile(abs, file.next, { encoding: 'utf8', flag: 'wx' });
-      } else {
-        if ((await lstat(abs)).isSymbolicLink()) throw new Error('it is a symbolic link');
-        await writeFile(abs, file.next, 'utf8');
-      }
-      fixed.push({ code: file.code, path: file.path });
-    } catch (err) {
-      const reason = err instanceof Error ? err.message.split('\n')[0]! : String(err);
-      warnings.push({ code: 'W_WRITE_FAILED', message: `could not write ${file.path}: ${reason}` });
-    }
-  }
-  return { fixed, warnings };
-}
-
 /** `doctor`: offline checks, then owner validity and push rights through `deps.host` (spec 8). */
 export function doctorCommand(deps: { host: Host }): CommandDef {
   return {
@@ -96,7 +59,7 @@ export function doctorCommand(deps: { host: Host }): CommandDef {
       let fixed: FixedFile[] = [];
       let fixWarnings: Warning[] = [];
       if (opts.fix === true) {
-        ({ fixed, warnings: fixWarnings } = await fix(ws, only));
+        ({ fixed, warnings: fixWarnings } = await fixGenerated(ws, only));
         if (fixed.length > 0) ws = await loadWorkspace(root);
       }
       const net = await hostChecks(ws, deps.host, { ...(only === undefined ? {} : { brain: only }), offline: opts.offline === true });

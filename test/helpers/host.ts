@@ -1,5 +1,5 @@
 import { githubRepoOf } from '../../src/host/github.js';
-import type { Host, OwnerStatus, Permission } from '../../src/host/host.js';
+import type { Host, OwnerStatus, Permission, PullRequestInput } from '../../src/host/host.js';
 import type { CliError } from '../../src/output.js';
 
 export interface FakeHostOptions {
@@ -14,14 +14,17 @@ export interface FakeHostOptions {
   /** Thrown from every network method once `failAfter` calls have succeeded. */
   failWith?: CliError;
   failAfter?: number;
+  /** Thrown by `createPullRequest` after it records the call. */
+  prError?: CliError;
 }
 
 /**
  * A host that answers from memory. `created` lists the repo names it was asked to create;
  * `calls` records `permission o/r`, `ownerStatus @x o/r` and `pr o/r head`.
  */
-export function fakeHost(o: FakeHostOptions = {}): Host & { created: string[]; calls: string[] } {
+export function fakeHost(o: FakeHostOptions = {}): Host & { created: string[]; calls: string[]; prs: PullRequestInput[] } {
   const created: string[] = [];
+  const prs: PullRequestInput[] = [];
   const calls: string[] = [];
   let ok = 0;
   const step = (call: string) => {
@@ -32,6 +35,7 @@ export function fakeHost(o: FakeHostOptions = {}): Host & { created: string[]; c
   return {
     created,
     calls,
+    prs,
     async login() {
       if (o.loginError) throw o.loginError;
       return o.login ?? 'octo-user';
@@ -55,7 +59,9 @@ export function fakeHost(o: FakeHostOptions = {}): Host & { created: string[]; c
     async createPullRequest(pr) {
       const key = `${pr.repo.owner}/${pr.repo.name}`;
       step(`pr ${key} ${pr.head}`);
-      return { number: 1, url: `https://github.com/${key}/pull/1` };
+      prs.push(pr);
+      if (o.prError !== undefined) throw o.prError;
+      return { number: prs.length, url: `https://github.com/${key}/pull/${prs.length}` };
     },
   };
 }

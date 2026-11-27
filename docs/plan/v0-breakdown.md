@@ -41,6 +41,8 @@ Personal brain plus one shared brain, PRs through GitHub.
 | 9 | **Mount lifecycle.** `mount`, `unmount`, `mounts`, `sync` (incl. cloning missing mounts), `brain new` (URL and local), `brain publish`, `init` restore. | Cloning the dogfood workspace on a second machine and running `init` restores it fully. |
 | 10 | **Contribute flow.** Branch → PR → back to default; `contribute` skill; people-policy check (deterministic + reviewer agent); consistency-reviewer; cross-brain `search`. | The shared-brain scenarios of the checklist pass on Claude Code against the sandbox shared brain. |
 
+Chunk 10 status: done. `commit <brain>` routes (PR, direct, refused), the `contribute` skill and both reviewer agents are in, and the shared scenarios pass on Claude Code 2.1.325 against `wildfeuer-labs/brain-sandbox` with 0.1.0-alpha.5 (S2 in part, with S2b covering the reviewer; see the [run log](../scenarios.md#run-log)).
+
 ## Milestone C — Pilot-ready
 
 | # | Chunk | Done when |
@@ -69,7 +71,8 @@ Open points from the [chunk 1 research](../research/2026-11-chunk-01-research.md
 - **Chunk 7:** the pre-commit hook fires from VS Code and Obsidian-git commits on Windows (moved from chunk 6). Ramon checks while dogfooding.
 - **Chunk 7 (done):** the dogfood pin is a published alpha: 0.1.0-alpha.2 on npm under `next`, as `brain-mesh-ai-workspace` (npm refused `brain-mesh` as too similar to `brainmesh`); the command stays `brain-mesh`. The personal scenarios pass on Claude Code 2.1.325 ([run log](../scenarios.md#run-log)).
 - **Chunk 8 (done):** logged-out and offline `gh` behaviour, checked with the real gh 2.100.0 and pinned in tests; the adapter passes against a sandbox repo for permissions, user owners and PRs. See the [chunk 8 checks](../research/2026-11-chunk-01-research.md#chunk-8-checks).
-- **Chunk 10:** re-check the team-repo permission endpoint (`Accept: application/vnd.github.v3.repository+json`) and teams as seen by an outside collaborator, with `BRAIN_MESH_SANDBOX_TEAM` set against the sandbox shared brain; the chunk 8 sandbox account had no org team.
+- **Chunk 10 (done):** the team-repo permission endpoint answers 404 for a team without access to the repo and 200 with `permissions` once it has write access; the e2e passes with `BRAIN_MESH_SANDBOX_TEAM`. See the [chunk 10 checks](../research/2026-11-chunk-01-research.md#chunk-10-checks).
+- **Chunk 12:** what an outside collaborator sees of org teams (owner checks); needs a second account, so it is checked in the pilot.
 - **Chunk 9 (done):** with Obsidian open, a mounted brain's `.git/` contents don't show up in search, and unmount deletes the folder on Windows; see the [chunk 9 checks](../research/2026-11-chunk-01-research.md#chunk-9-checks).
 
 ## Moved from chunk 3
@@ -191,3 +194,15 @@ From the [chunk 9 plan](../superpowers/plans/2026-11-26-chunk-09-mount-lifecycle
 - [ ] With no upstream, `sync` says "Workspace pulled; not pushed."
 - [ ] If removing a failed clone also fails, the original error is replaced by `E_INTERNAL`; keep the original.
 - [ ] Untested: a commit or push failure after the clone, an unreachable URL through `mount`, a relative URL in `brain publish`.
+
+## Deferred minors from chunk 10
+
+- [ ] Merge commits and local commits already on `origin` fail the cherry-pick as false conflicts; use `rev-list --no-merges --cherry-pick --right-only origin/<base>...HEAD`.
+- [ ] Local commits with no uncommitted change report "Nothing to commit" instead of being contributed.
+- [ ] An empty `-m`, or one whose first line is blank, is not refused before the fetch; a blank title reaches the PR API.
+- [ ] Small inconsistencies:
+  - `--dry-run` reports the wanted branch, not the free one;
+  - the direct route commits to the current branch, not the default;
+  - `commit` reads `mesh.yaml` twice;
+  - the dry run's `files` leave out regenerated files.
+- [ ] The contribute skill's override wording: one S2b run offered "keep it with a reason" for a real judgement; say plainly that only a false positive can be overridden.
