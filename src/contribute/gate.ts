@@ -1,7 +1,16 @@
 import { runChecks } from '../doctor/run.js';
-import { gitOk } from '../git.js';
+import { git, gitOk } from '../git.js';
 import { CliError, ErrorCode } from '../output.js';
 import { loadWorkspace } from '../workspace/load.js';
+
+/**
+ * True when the clone in `dir` has commits its upstream lacks; false without an upstream. Local
+ * only, no fetch (chunk 13 plan, decision 4).
+ */
+export async function hasLocalCommits(dir: string): Promise<boolean> {
+  const r = await git(dir, ['rev-list', '--count', '@{u}..HEAD']);
+  return r.exitCode === 0 && Number(r.stdout.trim()) > 0;
+}
 
 /** Changed paths of the git repo `dir` (brain-relative POSIX), including untracked files; a rename gives its new path. */
 export async function brainChanges(dir: string): Promise<string[]> {

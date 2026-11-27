@@ -6,7 +6,7 @@ import type { Host } from '../host/host.js';
 import { checkPushRights } from '../mount/rights.js';
 import { CliError, ErrorCode, type Warning } from '../output.js';
 import { loadWorkspace } from '../workspace/load.js';
-import { assertGate, brainChanges } from './gate.js';
+import { assertGate, brainChanges, hasLocalCommits } from './gate.js';
 import { prSlug } from './slug.js';
 
 const firstLine = (s: string) => s.trim().split('\n')[0]!.trim();
@@ -63,7 +63,7 @@ export async function contributePr(o: {
   const warnings: Warning[] = [];
   const files = await brainChanges(dir);
   const result: CommitData = { brain: id, route: 'pr', committed: false, commit: null, files, pushed: false, branch: null, pr: null, dryRun: o.dryRun };
-  if (files.length === 0) return { ...result, warnings };
+  if (files.length === 0 && !(await hasLocalCommits(dir))) return { ...result, warnings };
 
   const repo = host.repoOf(o.url);
   if (repo === null) {
@@ -82,10 +82,15 @@ export async function contributePr(o: {
   const fetch = await git(dir, ['fetch', '-q', 'origin'], { network: true });
   if (fetch.exitCode !== 0) throw new CliError(ErrorCode.Git, `could not fetch ${o.url}: ${firstLine(fetch.stderr)}`);
   const branch = await freeBranch(dir, wanted);
-  const localCommits = (await gitOk(dir, ['rev-list', '--reverse', `origin/${base}..HEAD`])).split('\n').filter((c) => c !== '');
+  // Merges and commits whose patch is already upstream are left out: they cannot be cherry-picked.
+  const localCommits = (await gitOk(dir, ['rev-list', '--reverse', '--no-merges', '--cherry-pick', '--right-only', `origin/${base}...HEAD`]))
+    .split('\n')
+    .filter((c) => c !== '');
 
   // From here on the clone changes; `restore` puts it back exactly as it was.
-  await gitOk(dir, ['stash', 'push', '-q', '-u', '-m', STASH_MESSAGE]);
+  // A clean tree (local commits only) has nothing to stash.
+  const stashed = files.length > 0;
+  if (stashed) await gitOk(dir, ['stash', 'push', '-q', '-u', '-m', STASH_MESSAGE]);
   /** Puts the clone back; returns git's reason when the stash could not be popped, else null. */
   const restore = async (): Promise<string | null> => {
     await git(dir, ['cherry-pick', '--abort']);
@@ -93,6 +98,7 @@ export async function contributePr(o: {
     await git(dir, ['clean', '-q', '-fd']);
     await git(dir, ['switch', '-q', '-f', base]);
     await git(dir, ['branch', '-q', '-D', branch]);
+    if (!stashed) return null;
     const pop = await git(dir, ['stash', 'pop', '-q']);
     return pop.exitCode === 0 ? null : firstLine(pop.stderr) || 'git stash pop failed';
   };
@@ -120,7 +126,7 @@ export async function contributePr(o: {
     for (const c of localCommits) {
       if ((await git(dir, ['cherry-pick', c])).exitCode !== 0) return await fail(conflict(`your local commit ${c.slice(0, 7)}`));
     }
-    if ((await git(dir, ['stash', 'apply', '-q'])).exitCode !== 0) return await fail(conflict('your change'));
+    if (stashed && (await git(dir, ['stash', 'apply', '-q'])).exitCode !== 0) return await fail(conflict('your change'));
     warnings.push(...(await fixGenerated(await loadWorkspace(root), id)).warnings);
     await assertGate(root, id);
     await gitOk(dir, ['add', '-A']);
@@ -140,7 +146,7 @@ export async function contributePr(o: {
   }
 
   // Pushed: the branch holds every change, so the stash and the local-only commits can go.
-  await git(dir, ['stash', 'drop', '-q']);
+  if (stashed) await git(dir, ['stash', 'drop', '-q']);
   const text = prText(o.message, o.body);
   let pr: { number: number; url: string };
   let sha: string;

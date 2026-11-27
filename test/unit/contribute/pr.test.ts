@@ -173,6 +173,69 @@ describe('the pull-request route', () => {
     expect((await git(dir, 'branch', '--show-current')).trim()).toBe('main');
   });
 
+  it('a merge commit and an already-upstream commit are not cherry-picked', async () => {
+    const { root, bare, dir, commands } = await setup();
+    // A side branch merged locally with a merge commit.
+    await git(dir, 'switch', '-q', '-c', 'side');
+    await writeTree(dir, { 'notes/side.md': note('Side') });
+    await git(dir, 'add', 'notes/side.md');
+    await git(dir, 'commit', '-q', '--no-verify', '-m', 'side note');
+    await git(dir, 'switch', '-q', 'main');
+    await git(dir, 'merge', '-q', '--no-ff', '--no-verify', 'side', '-m', 'merge side');
+    await git(dir, 'branch', '-q', '-D', 'side');
+    // A local commit whose patch also reached origin as another commit.
+    await writeTree(dir, { 'notes/dup.md': note('Dup') });
+    await git(dir, 'add', 'notes/dup.md');
+    await git(dir, 'commit', '-q', '--no-verify', '-m', 'dup note');
+    await pushToRemote(bare, 'notes/dup.md', note('Dup'));
+    await addNote(root, dir);
+    const r = await commit(root, commands, '-m', 'Add runner pools');
+    expect(r.code, r.out).toBe(0);
+    const tree = (await git(bare, 'ls-tree', '-r', '--name-only', BRANCH)).split('\n');
+    expect(tree).toEqual(expect.arrayContaining(['notes/side.md', 'notes/dup.md', 'notes/runner-pools.md']));
+  });
+
+  it('local commits alone are contributed', async () => {
+    const { root, bare, dir, commands } = await setup();
+    await addNote(root, dir);
+    await git(dir, 'add', '-A');
+    await git(dir, 'commit', '-q', '--no-verify', '-m', 'local commit');
+    const r = await commit(root, commands, '-m', 'Add runner pools');
+    expect(r.code, r.out).toBe(0);
+    expect(r.json().data).toMatchObject({ route: 'pr', committed: true, pushed: true, branch: BRANCH });
+    expect(r.json().data.files).toContain('notes/runner-pools.md');
+    expect(await remoteBranches(bare)).toContain(BRANCH);
+  });
+
+  it('local commits alone, dry run', async () => {
+    const host = fakeHost();
+    const { root, bare, dir, commands } = await setup({ host });
+    await addNote(root, dir);
+    await git(dir, 'add', '-A');
+    await git(dir, 'commit', '-q', '--no-verify', '-m', 'local commit');
+    const callsBefore = host.calls.length;
+    const r = await commit(root, commands, '--dry-run', '-m', 'Add runner pools');
+    expect(r.code, r.out).toBe(0);
+    expect(r.json().data).toMatchObject({ route: 'pr', dryRun: true, committed: false, pushed: false, branch: BRANCH });
+    expect(host.calls.length).toBe(callsBefore);
+    expect(await remoteBranches(bare)).not.toContain(BRANCH);
+  });
+
+  it('an empty message is refused on the PR route', async () => {
+    const host = fakeHost();
+    const { root, dir, commands } = await setup({ host });
+    await addNote(root, dir);
+    const before = await snapshot(dir);
+    const callsBefore = host.calls.length;
+    for (const m of ['', '\n\nbody']) {
+      const r = await commit(root, commands, '-m', m);
+      expect(r.code, r.out).toBe(2);
+      expect(r.json().error.code).toBe('E_USAGE');
+    }
+    expect(host.calls.length).toBe(callsBefore);
+    expect(await snapshot(dir)).toEqual(before);
+  });
+
   it('dry run, PR route', async () => {
     const host = fakeHost();
     const { root, dir, commands } = await setup({ host });

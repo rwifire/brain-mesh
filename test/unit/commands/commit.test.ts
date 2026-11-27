@@ -35,6 +35,24 @@ async function pushFrom(dir: string, tree: Record<string, string>) {
 }
 
 describe('commit', () => {
+  it('an empty message is refused', async () => {
+    const { root } = await setup();
+    await writeTree(root, { 'brains/personal/inbox/a.md': '# A\n' });
+    const before = await git(root, 'status', '--porcelain');
+    const r = await commit(root, '-m', '');
+    expect(r.code, r.out).toBe(2);
+    expect(r.json().error).toMatchObject({ code: 'E_USAGE', message: '--message needs a first line: it is the commit message and the pull request title' });
+    expect(await git(root, 'status', '--porcelain')).toBe(before);
+  });
+
+  it('a blank first line is refused', async () => {
+    const { root } = await setup();
+    await writeTree(root, { 'brains/personal/inbox/a.md': '# A\n' });
+    const r = await commit(root, '-m', '  \n\nbody');
+    expect(r.code, r.out).toBe(2);
+    expect(r.json().error.code).toBe('E_USAGE');
+  });
+
   it('commits only personal paths and pushes', async () => {
     const { root, bare } = await setup();
     await writeTree(root, { 'brains/personal/inbox/a.md': '# A\n', 'tools/x.ts': 'export {};\n' });
