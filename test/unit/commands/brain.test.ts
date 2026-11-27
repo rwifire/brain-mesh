@@ -128,6 +128,17 @@ describe('brain publish', () => {
     expect(mounts.json().data.brains[1]).toMatchObject({ id: 'brain-ideas', url, published: true });
   });
 
+  it('a new brain knows origin HEAD', async () => {
+    const { base, root } = await setup();
+    const url = await emptyRemote(base, 'brain-new-head');
+    expect((await brainNew(root, url, '--description', 'Heads.')).code).toBe(0);
+    expect((await git(join(root, 'brains', 'brain-new-head'), 'symbolic-ref', 'refs/remotes/origin/HEAD')).trim()).toBe('refs/remotes/origin/main');
+    expect((await brainNew(root, 'brain-later', '--description', 'Later.')).code).toBe(0);
+    const later = await emptyRemote(base, 'brain-later');
+    expect((await publish(root, 'brain-later', later)).code).toBe(0);
+    expect((await git(join(root, 'brains', 'brain-later'), 'symbolic-ref', 'refs/remotes/origin/HEAD')).trim()).toBe('refs/remotes/origin/main');
+  });
+
   it('brain publish refuses', async () => {
     const { base, root } = await setup();
     expect((await brainNew(root, 'brain-ideas', '--description', 'Ideas.')).code).toBe(0);

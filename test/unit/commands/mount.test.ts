@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { commandsFor } from '../../../src/commands/index.js';
 import { CliError } from '../../../src/output.js';
 import { read, run, write } from '../../helpers/cli.js';
-import { writeTree } from '../../helpers/fixtures.js';
+import { tempDir, writeTree } from '../../helpers/fixtures.js';
 import { isolateGit } from '../../helpers/git-env.js';
 import { fakeHost } from '../../helpers/host.js';
 import { initWorkspace, sharedRemote } from '../../helpers/remotes.js';
@@ -38,6 +38,21 @@ describe('mount', () => {
     expect((await git(remote, 'rev-parse', 'main')).trim()).toBe((await git(root, 'rev-parse', 'HEAD')).trim());
     const doctor = await run(['doctor', '--json'], root);
     expect(doctor.json().data.counts.errors, doctor.out).toBe(0);
+  });
+
+  it('the reported commit is the pushed one', async () => {
+    const { root, url, remote } = await setup();
+    const other = join(await tempDir('bm other '), 'w');
+    await git(join(other, '..'), 'clone', '-q', remote, 'w');
+    await writeTree(other, { 'tools/other.ts': 'export {};\n' });
+    await git(other, 'add', '-A');
+    await git(other, 'commit', '-q', '--no-verify', '-m', 'from the other machine');
+    await git(other, 'push', '-q');
+    const r = await mount(root, url);
+    expect(r.code, r.out).toBe(0);
+    const headNow = (await git(root, 'rev-parse', 'HEAD')).trim();
+    expect(r.json().data.commit).toBe(headNow);
+    expect((await git(remote, 'rev-parse', 'main')).trim()).toBe(headNow);
   });
 
   it('mount refuses collisions', async () => {
