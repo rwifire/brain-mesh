@@ -57,3 +57,12 @@ export async function initWorkspace(base?: string): Promise<{ base: string; root
   if (r.code !== 0) throw new Error(`init failed: ${r.out}`);
   return { base: b, root, remote };
 }
+
+/**
+ * `isolateGit({ extra })` lines that make `https://github.com/<org>/<name>.git` resolve to the
+ * local `<base>/<name>.git`, so github.com URLs work in tests without the network.
+ */
+export function githubAlias(base: string, org = 'acme'): string[] {
+  const local = base.split('\\').join('/').replace(/\/?$/, '/');
+  return [`[url "${local}"]`, `\tinsteadOf = https://github.com/${org}/`];
+}

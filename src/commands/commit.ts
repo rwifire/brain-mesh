@@ -1,6 +1,7 @@
 import { stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { assertGate, brainChanges } from '../contribute/gate.js';
+import { contributePr } from '../contribute/pr.js';
 import { gitOk } from '../git.js';
 import type { Host } from '../host/host.js';
 import type { CommandDef } from '../main.js';
@@ -75,7 +76,7 @@ async function commitDirect(dir: string, id: string, files: string[], message: s
  * push. Shared unpublished: a direct commit. Shared published `contribute`: a pull request.
  * `read`: refused. Shared brains pass the doctor gate first (chunk 10 plan, decision 2).
  */
-export function commitCommandFor(_deps: { host: Host }): CommandDef {
+export function commitCommandFor(deps: { host: Host }): CommandDef {
   return {
     name: 'commit',
     description: "commit a brain's changes: personal is pushed, a shared brain gets a pull request",
@@ -114,7 +115,18 @@ export function commitCommandFor(_deps: { host: Host }): CommandDef {
         const data = await commitDirect(dir, id, files, message, dryRun);
         return { data, text: text(data) };
       }
-      throw new CliError(ErrorCode.NotSupported, 'pull requests for published shared brains are not supported yet');
+      const mesh = await readMesh(root);
+      const { warnings, ...data } = await contributePr({
+        root,
+        id,
+        url: mount.url,
+        user: mesh.user,
+        message,
+        ...(typeof opts.body === 'string' ? { body: opts.body } : {}),
+        host: deps.host,
+        dryRun,
+      });
+      return { data, text: text(data), warnings };
     },
   };
 }
