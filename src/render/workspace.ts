@@ -51,10 +51,37 @@ export interface CoreTemplates {
   hooks: Map<string, string>;
 }
 
+export interface RenderOptions {
+  core?: CoreSource;
+  /** Renders for this core version instead of `mesh.yaml`'s pin: `{{cli}}` and the record use it. */
+  pin?: string;
+  /** False: change nothing on disk (the record included) and report what would change. */
+  write?: boolean;
+  /** Upgrade mode for seeds (chunk 11 plan, decision 4): edited seeds are kept unless accepted. */
+  seeds?: { accept: ReadonlySet<string> };
+}
+
+/** A managed or seed path whose content changes (or would change), or an edited seed that is kept. */
+export interface RenderChange {
+  path: string;
+  kind: EntryKind;
+  /** The file's text before, or null when it did not exist. */
+  before: string | null;
+  /** What brain-mesh renders there now (for a kept seed: what it would have written). */
+  after: string;
+  status: 'written' | 'updated' | 'accepted' | 'kept';
+  /** The record has the path and the file no longer matches its recorded sha256. */
+  handEdited: boolean;
+}
+
 export interface RenderResult {
   written: string[];
   removed: string[];
   record: RenderRecord;
+  /** Sorted by path. */
+  changes: RenderChange[];
+  /** The record before this render, or null when there was none. */
+  previous: RenderRecord | null;
   warnings: Warning[];
 }
 
@@ -113,7 +140,7 @@ export function planWorkspace(
 }
 
 /** The core copy of an agent in its source format (`.mesh/agents/<n>.md`), unfilled. */
-function agentSource(a: AgentSource): string {
+export function agentSource(a: AgentSource): string {
   return `---\nname: ${a.name}\ndescription: ${JSON.stringify(a.description)}\ntools: [${a.tools.join(', ')}]\n---\n${a.body}`;
 }
 
@@ -188,7 +215,7 @@ function safePath(p: unknown): p is string {
 }
 
 /** The previous record; entries that are malformed or point outside the workspace are dropped. */
-async function readRecord(root: string): Promise<RenderRecord | null> {
+export async function readRecord(root: string): Promise<RenderRecord | null> {
   const text = await readText(join(root, ...RECORD_PATH.split('/')));
   if (text === null) return null;
   let raw: unknown;
@@ -258,12 +285,15 @@ async function filesUnder(root: string, rel: string): Promise<string[]> {
  * Writes only paths that are brain-mesh's (plan Ruling 4), never through a link, and
  * removes managed entries of the previous record that are no longer rendered.
  */
-export async function renderWorkspace(root: string, opts: { core?: CoreSource } = {}): Promise<RenderResult> {
+export async function renderWorkspace(root: string, opts: RenderOptions = {}): Promise<RenderResult> {
   if ((await kindOf(join(root, 'mesh.yaml'))) !== 'file') {
     throw new CliError(ErrorCode.NoWorkspace, `no mesh.yaml in ${root}`, ExitCode.Failure);
   }
-  const ws = await loadWorkspace(root);
-  if (ws.mesh === null) throw new CliError(ErrorCode.NoWorkspace, `mesh.yaml is invalid: ${ws.meshError}`, ExitCode.Failure);
+  const loaded = await loadWorkspace(root);
+  if (loaded.mesh === null) throw new CliError(ErrorCode.NoWorkspace, `mesh.yaml is invalid: ${loaded.meshError}`, ExitCode.Failure);
+  const ws: WorkspaceModel = opts.pin === undefined ? loaded : { ...loaded, mesh: { ...loaded.mesh, brain_mesh: opts.pin } };
+  const mesh = ws.mesh!;
+  const doWrite = opts.write !== false;
   const core = opts.core ?? packageCore();
   const warnings: Warning[] = [];
   const report = (code: string, where: string) => (p: SourceProblem) =>
@@ -285,6 +315,7 @@ export async function renderWorkspace(root: string, opts: { core?: CoreSource } 
   );
   const prev = await readRecord(root);
   const prevPaths = new Set((prev?.files ?? []).map((f) => f.path));
+  const prevEntry = new Map((prev?.files ?? []).map((f) => [f.path, f]));
   const abs = (rel: string) => join(root, ...rel.split('/'));
   const taken = (rel: string, why: string) =>
     warnings.push({ code: 'W_RENDER_PATH_TAKEN', message: `${rel} is not brain-mesh's (${why}); left as it is` });
@@ -316,16 +347,36 @@ export async function renderWorkspace(root: string, opts: { core?: CoreSource } 
 
   const written: string[] = [];
   const recorded: RecordEntry[] = [];
-  const put = async (e: RenderEntry, current: Buffer | null, next: Buffer): Promise<void> => {
+  const changes: RenderChange[] = [];
+  /** Writes `next`; true on success (or, without `write`, always: nothing touches disk). */
+  const put = async (e: RenderEntry, current: Buffer | null, next: Buffer): Promise<boolean> => {
+    if (!doWrite) {
+      written.push(e.path);
+      return true;
+    }
     try {
       await mkdir(dirname(abs(e.path)), { recursive: true });
       if (current === null) await writeFile(abs(e.path), next, { flag: 'wx' });
       else await writeFile(abs(e.path), next);
       written.push(e.path);
+      return true;
     } catch (err) {
       warnings.push({ code: 'W_WRITE_FAILED', message: `could not write ${e.path}: ${reason(err)}` });
+      return false;
     }
   };
+  /** Records `e` as rendered; after a failed write the previous entry (if any) stays, so the record matches disk. */
+  const keep = (e: RenderEntry, ok: boolean, sha: string) => {
+    if (ok) recorded.push({ path: e.path, kind: e.kind, sha256: sha });
+    else if (prevEntry.has(e.path)) recorded.push(prevEntry.get(e.path)!);
+  };
+  /** True when the record has `path` and `current` no longer matches its recorded sha256 (line endings ignored for text). */
+  const edited = (e: RenderEntry, current: Buffer) => {
+    const old = prevEntry.get(e.path);
+    return old !== undefined && (e.bytes ? sha256(current) : sha256(utf8(lf(current)))) !== old.sha256;
+  };
+  const change = (e: RenderEntry, current: Buffer | null, after: Buffer, status: RenderChange['status'], handEdited: boolean) =>
+    changes.push({ path: e.path, kind: e.kind, before: current === null ? null : current.toString('utf8'), after: after.toString('utf8'), status, handEdited });
 
   const blocks = entries.filter((e) => e.kind === 'block');
   for (const e of [...entries.filter((x) => x.kind !== 'block'), ...blocks]) {
@@ -342,8 +393,37 @@ export async function renderWorkspace(root: string, opts: { core?: CoreSource } 
     const current = k === 'file' ? await readFile(abs(e.path)) : null;
 
     if (e.kind === 'seed') {
-      if (current === null) await put(e, null, e.content);
-      recorded.push({ path: e.path, kind: 'seed', sha256: sha256(e.content) });
+      const seedSha = sha256(e.content);
+      if (current === null) {
+        const ok = await put(e, null, e.content);
+        change(e, null, e.content, 'written', false);
+        keep(e, ok, seedSha);
+        continue;
+      }
+      if (opts.seeds === undefined || lf(current) === lf(e.content)) {
+        recorded.push({ path: e.path, kind: 'seed', sha256: seedSha });
+        continue;
+      }
+      // Upgrade mode (chunk 11 plan, decision 4). Unchanged upstream: nothing to offer, the user's version stays.
+      const old = prevEntry.get(e.path);
+      if (old !== undefined && old.sha256 === seedSha) {
+        recorded.push(old);
+        continue;
+      }
+      const handEdited = old === undefined || sha256(utf8(lf(current))) !== old.sha256;
+      if (!handEdited) {
+        const ok = await put(e, current, e.content);
+        change(e, current, e.content, 'updated', false);
+        keep(e, ok, seedSha);
+      } else if (opts.seeds.accept.has(e.path)) {
+        const next = e.path === OBSIDIAN_APP ? utf8(mergeJson(current.toString('utf8'), e.content.toString('utf8'))) : e.content;
+        const ok = await put(e, current, next);
+        change(e, current, next, 'accepted', true);
+        keep(e, ok, seedSha);
+      } else {
+        change(e, current, e.content, 'kept', true);
+        if (old !== undefined) recorded.push(old);
+      }
       continue;
     }
     if (e.kind === 'block') {
@@ -360,8 +440,8 @@ export async function renderWorkspace(root: string, opts: { core?: CoreSource } 
         continue;
       }
       const next = withEol(result.text, current === null ? null : text);
-      if (next !== text || current === null) await put(e, current, utf8(next));
-      recorded.push({ path: e.path, kind: 'block', sha256: sha256(e.content) });
+      const ok = next !== text || current === null ? await put(e, current, utf8(next)) : true;
+      keep(e, ok, sha256(e.content));
       continue;
     }
     // managed
@@ -376,9 +456,10 @@ export async function renderWorkspace(root: string, opts: { core?: CoreSource } 
       continue;
     }
     const next = current !== null && !e.bytes ? utf8(withEol(e.content.toString('utf8'), current.toString('utf8'))) : e.content;
-    await put(e, current, next);
-    if (e.executable) await makeExecutable(abs(e.path));
-    recorded.push({ path: e.path, kind: 'managed', sha256: sha256(e.content) });
+    const ok = await put(e, current, next);
+    change(e, current, e.content, 'written', current !== null && edited(e, current));
+    if (ok && e.executable && doWrite) await makeExecutable(abs(e.path));
+    keep(e, ok, sha256(e.content));
   }
 
   // Managed entries rendered last time and not any more are removed; nothing else is.
@@ -389,6 +470,10 @@ export async function renderWorkspace(root: string, opts: { core?: CoreSource } 
     if (!resolve(abs(old.path)).startsWith(resolve(root) + sep)) continue;
     if (await throughLink(root, old.path)) continue;
     if ((await kindOf(abs(old.path))) !== 'file') continue;
+    if (!doWrite) {
+      removed.push(old.path);
+      continue;
+    }
     try {
       await unlink(abs(old.path));
       removed.push(old.path);
@@ -401,11 +486,11 @@ export async function renderWorkspace(root: string, opts: { core?: CoreSource } 
 
   const record: RenderRecord = {
     version: 1,
-    brain_mesh: ws.mesh.brain_mesh,
+    brain_mesh: mesh.brain_mesh,
     files: recorded.sort((x, y) => byString(x.path, y.path)),
   };
   const recordText = JSON.stringify(record, null, 2) + '\n';
-  if ((await readText(abs(RECORD_PATH))) !== recordText) {
+  if (doWrite && (await readText(abs(RECORD_PATH))) !== recordText) {
     try {
       await mkdir(dirname(abs(RECORD_PATH)), { recursive: true });
       await writeFile(abs(RECORD_PATH), recordText, 'utf8');
@@ -414,7 +499,30 @@ export async function renderWorkspace(root: string, opts: { core?: CoreSource } 
       warnings.push({ code: 'W_WRITE_FAILED', message: `could not write ${RECORD_PATH}: ${reason(err)}` });
     }
   }
-  return { written: written.sort(byString), removed: removed.sort(byString), record, warnings };
+  return {
+    written: written.sort(byString),
+    removed: removed.sort(byString),
+    record,
+    changes: changes.sort((x, y) => byString(x.path, y.path)),
+    previous: prev,
+    warnings,
+  };
+}
+
+const OBSIDIAN_APP = 'brains/.obsidian/app.json';
+
+/** The seed's keys over the user's JSON object, keeping the user's other keys; the seed alone when either is not an object. */
+function mergeJson(current: string, seed: string): string {
+  const obj = (s: string): Record<string, unknown> | null => {
+    try {
+      const v: unknown = JSON.parse(s);
+      return v !== null && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : null;
+    } catch {
+      return null;
+    }
+  };
+  const [have, want] = [obj(current), obj(seed)];
+  return have === null || want === null ? seed : JSON.stringify({ ...have, ...want }, null, 2) + '\n';
 }
 
 /** Removes empty folders upwards from `rel`, keeping the top two levels (`.claude/skills`, `.mesh/agents`, …). */

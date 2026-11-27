@@ -9,6 +9,7 @@ import { isolateGit } from '../../helpers/git-env.js';
 import { fakeHost } from '../../helpers/host.js';
 import { initWorkspace, sharedRemote } from '../../helpers/remotes.js';
 import { git } from '../../helpers/workspace.js';
+import { setPin } from '../../../src/workspace/mesh-edit.js';
 
 const exists = (p: string) => stat(p).then(() => true, () => false);
 const commits = async (root: string) => Number((await git(root, 'rev-list', '--count', 'HEAD')).trim());
@@ -73,6 +74,28 @@ describe('mount', () => {
   it('mount rejects an unknown mode', async () => {
     const { root, url } = await setup();
     expect((await mount(root, url, '--mode', 'write')).json().error.code).toBe('E_USAGE');
+  });
+});
+
+describe('after another clone upgraded', () => {
+  it('commands that render refuse with the old CLI', async () => {
+    const { root, url, base } = await setup();
+    expect((await mount(root, url)).code).toBe(0);
+    await setPin(root, '9.9.9');
+    await git(root, 'commit', '-q', '-am', 'Upgrade brain-mesh');
+    const sha = (await git(root, 'rev-parse', 'HEAD')).trim();
+    const mesh = await read(root, 'mesh.yaml');
+    const agents = await read(root, 'AGENTS.md');
+    const other = await sharedRemote(base, 'brain-ops');
+    for (const args of [['mount', other], ['unmount', 'brain-sre'], ['brain', 'new', 'brain-ideas', '--description', 'Ideas.'], ['brain', 'publish', 'brain-sre', other]]) {
+      const r = await run([...args, '--json'], root);
+      expect(r.json().error, args.join(' ')).toMatchObject({ code: 'E_PIN_MISMATCH', message: expect.stringContaining('npx -y brain-mesh-ai-workspace@9.9.9 init') });
+    }
+    expect(await read(root, 'mesh.yaml')).toBe(mesh);
+    expect(await read(root, 'AGENTS.md')).toBe(agents);
+    expect((await git(root, 'rev-parse', 'HEAD')).trim()).toBe(sha);
+    expect(await exists(join(root, 'brains', 'brain-ops'))).toBe(false);
+    expect(await exists(join(root, 'brains', 'brain-sre'))).toBe(true);
   });
 });
 

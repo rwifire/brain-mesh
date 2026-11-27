@@ -258,6 +258,27 @@ An override of a real false positive (its reason in the PR body under "People-po
 - it has a `DUPLICATE` line for `flaky-test-quarantine.md` and `quarantining-flaky-tests.md`;
 - no file changes in the workspace.
 
+## Upgrade
+
+### U1 Upgrade the dogfood workspace
+
+Runs by hand in the dogfood workspace, from its current pin to the new version (`<new>`). Use a second clone of the same workspace repo for the last step.
+
+**Prompt:** none (CLI only).
+
+**Steps:**
+1. In the dogfood workspace: `npx.cmd -y brain-mesh-ai-workspace@<new> upgrade --dry-run --json` in PowerShell, or `npx -y brain-mesh-ai-workspace@<new> upgrade --dry-run --json` in bash.
+2. The same without `--dry-run`. If step 1 listed a template file as `kept` and you want the new one, add `--accept <path>`.
+3. `git show --stat HEAD`, `git status`, and `git diff HEAD~1 --stat -- .local tools brains`.
+4. In a second clone, still on the old pin: `npx.cmd -y brain-mesh-ai-workspace@<old> sync --json`, then `npx.cmd -y brain-mesh-ai-workspace@<new> init --json`. The `sync` guard exists from 0.1.0-alpha.6 on, so this step needs an old pin of alpha.6 or later; with an older one, check only that `init` with the new version leaves a clean tree.
+
+**Pass when:**
+- the dry run lists the files it would re-render, with diffs for hand edits, template files and overridden skills, and changes nothing (`git status` is clean afterwards);
+- the upgrade bumps the pin in `mesh.yaml` and re-renders the skills (the `contribute` skill appears when coming from 0.1.0-alpha.4 or older). It commits only `mesh.yaml`, `AGENTS.md`, `.gitignore`, `.gitattributes` and `brains/.obsidian/app.json`, and pushes;
+- `git status` is clean and `.local/`, `tools/` and `brains/` are unchanged;
+- a hand-edited `brains/.obsidian/app.json` (Obsidian adds its own keys) is `kept` with a diff unless accepted;
+- in the second clone, `sync` warns `W_PIN_CHANGED` and renders nothing, and `init` with the new version re-renders it.
+
 ## Run log
 
 | Date | Version | Scenario | Result | Notes |
@@ -284,3 +305,4 @@ An override of a real false positive (its reason in the PR body under "People-po
 | 2026-11-27 | 0.1.0-alpha.5 | S3 | pass | 7 days from `cache-ttl-decision.md` with the reason; linked the brain-sandbox and personal notes; called the 14-day note out of date; named all three brains it searched; nothing changed. |
 | 2026-11-27 | 0.1.0-alpha.5 | S4 | pass | Declined to edit the `read` mount, showed the diff, offered to remount it as `contribute` (asking first) or to leave the change to the owners; `brain-handbook` unchanged. |
 | 2026-11-27 | 0.1.0-alpha.5 | S5 | pass | The consistency-reviewer reported the 14- vs 7-day contradiction with `cache-ttl-decision.md` as newer (and the README pointing at the stale note) and the flaky-test duplicate; no file changed. Claude Code 2.1.325, gh 2.100.0. |
+| 2026-11-27 | 0.1.0-alpha.6 | U1 | partial | From 0.1.0-alpha.4. Dry run: 19 managed files to re-render (`contribute` new), no hand edits, template files or overrides; nothing changed. The upgrade committed only `mesh.yaml`, `AGENTS.md` and `.gitignore` and pushed; `git status` clean, `.local/`, `tools/` and `brains/` untouched; `app.json` not rewritten by Obsidian, so not offered. Second clone: alpha.4 has no `sync` guard, so its `init`/`sync` pulled the upgrade and rendered its old `AGENTS.md` and `.gitignore` under the new pin (uncommitted); `init` with alpha.6 re-rendered them, tree clean. The `W_PIN_CHANGED` step can only run from alpha.6 on; it is covered by unit tests until then. |

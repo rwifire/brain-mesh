@@ -1,10 +1,11 @@
 import { stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { git } from '../git.js';
+import { packageVersion } from '../meta.js';
 import { CliError, type Warning } from '../output.js';
 import { renderWorkspace } from '../render/workspace.js';
 import type { Mount } from '../schemas/mesh.js';
-import { readMounts } from '../workspace/mesh-edit.js';
+import { readMesh, readMounts } from '../workspace/mesh-edit.js';
 import { pullPush } from '../workspace/repo.js';
 import { cloneBrain } from './clone.js';
 
@@ -92,6 +93,15 @@ export async function syncWorkspace(root: string): Promise<SyncData & { warnings
     if (row.status.startsWith('skipped-')) warnings.push({ code: 'W_MOUNT_SKIPPED', message: `${m.id} was not updated: ${row.detail}` });
     if (row.status === 'failed') warnings.push({ code: 'W_MOUNT_FAILED', message: `${m.id} could not be synced: ${row.detail}` });
   }
-  warnings.push(...(await renderWorkspace(root)).warnings);
+  // After another clone upgraded, this CLI holds the old core: rendering would mix it with the new pin (chunk 11 plan, decision 7).
+  const pin = (await readMesh(root)).brain_mesh;
+  if (pin !== packageVersion()) {
+    warnings.push({
+      code: 'W_PIN_CHANGED',
+      message: `mesh.yaml now pins ${pin}, this is ${packageVersion()}; run npx -y brain-mesh-ai-workspace@${pin} init to re-render the managed files`,
+    });
+  } else {
+    warnings.push(...(await renderWorkspace(root)).warnings);
+  }
   return { pushed, mounts, warnings };
 }

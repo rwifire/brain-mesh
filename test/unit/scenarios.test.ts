@@ -23,8 +23,8 @@ describe('personal scenarios', () => {
     const text = await readFile(CHECKLIST, 'utf8');
     const sections = text.split(/^### /m).slice(1);
     const ids = sections.map((s) => s.split(/\s/)[0]);
-    for (const id of ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'S1', 'S2', 'S3', 'S4', 'S5']) expect(ids).toContain(id);
-    for (const s of sections.filter((x) => /^[PS]\d/.test(x))) {
+    for (const id of ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'S1', 'S2', 'S3', 'S4', 'S5', 'U1']) expect(ids).toContain(id);
+    for (const s of sections.filter((x) => /^[PSU]\d/.test(x))) {
       expect(s, s.slice(0, 20)).toContain('**Prompt:**');
       expect(s, s.slice(0, 20)).toContain('**Pass when:**');
     }

@@ -25,6 +25,8 @@ export const ErrorCode = {
   NoPushRights: 'E_NO_PUSH_RIGHTS',
   MountDirty: 'E_MOUNT_DIRTY',
   PinMismatch: 'E_PIN_MISMATCH',
+  Downgrade: 'E_DOWNGRADE',
+  NoRenderRecord: 'E_NO_RENDER_RECORD',
   RepoName: 'E_REPO_NAME',
   AlreadyPublished: 'E_ALREADY_PUBLISHED',
   ReadOnly: 'E_READ_ONLY',

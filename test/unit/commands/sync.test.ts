@@ -5,6 +5,7 @@ import { read, run, write } from '../../helpers/cli.js';
 import { tempDir, writeTree } from '../../helpers/fixtures.js';
 import { isolateGit } from '../../helpers/git-env.js';
 import { initWorkspace, pushToRemote, sharedRemote } from '../../helpers/remotes.js';
+import { setPin } from '../../../src/workspace/mesh-edit.js';
 import { git } from '../../helpers/workspace.js';
 
 const exists = (p: string) => stat(p).then(() => true, () => false);
@@ -100,5 +101,26 @@ describe('sync', () => {
     const r = await sync(root);
     expect(statuses(r)).toEqual({ 'brain-local': 'unpublished' });
     expect((r.json().warnings as { code: string }[]).map((w) => w.code)).toContain('W_BRAIN_UNPUBLISHED_MISSING');
+  });
+});
+
+describe('sync after a pin change', () => {
+  it('renders nothing and names the init to run', async () => {
+    const { root, remote } = await setup();
+    const other = join(await tempDir('bm other '), 'ws');
+    await git(join(other, '..'), 'clone', '-q', remote, 'ws');
+    await setPin(other, '9.9.9');
+    await git(other, 'commit', '-q', '-am', 'Upgrade brain-mesh');
+    await git(other, 'push', '-q');
+    const record = await read(root, '.mesh/render.json');
+    const skill = await read(root, '.claude/skills/ask/SKILL.md');
+    const r = await sync(root);
+    expect(r.code, r.out).toBe(0);
+    expect(await read(root, 'mesh.yaml')).toContain('brain_mesh: 9.9.9');
+    expect(r.json().warnings).toContainEqual(
+      expect.objectContaining({ code: 'W_PIN_CHANGED', message: expect.stringContaining('npx -y brain-mesh-ai-workspace@9.9.9 init') }),
+    );
+    expect(await read(root, '.mesh/render.json')).toBe(record);
+    expect(await read(root, '.claude/skills/ask/SKILL.md')).toBe(skill);
   });
 });

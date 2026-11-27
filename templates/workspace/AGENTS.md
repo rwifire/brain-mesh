@@ -10,6 +10,7 @@ This folder is a brain-mesh workspace. Brains are folders of markdown notes in `
 - Use the CLI for every deterministic action, with `--json`: `{{cli}} <command> --json`. Batch work into few calls; each takes about a second.
 - Shared brains change only through the `contribute` skill (a pull request, or a direct commit while unpublished). Never edit a brain mounted `read`.
 - After writing notes, run `{{cli}} doctor --fix --json` and fix what it still reports before you commit.
+- To upgrade brain-mesh, run `npx -y brain-mesh-ai-workspace@<new version> upgrade --dry-run --json`, show the user the diffs, then run it again without `--dry-run`, with `--accept <path>` for each template file the user accepts.
 - Do not edit `.mesh/`, the generated skill and agent folders in `.claude/` and `.github/`, or text between `brain-mesh` markers; they are regenerated.
 
 ## Mounted brains

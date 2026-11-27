@@ -5,12 +5,13 @@ import { git } from '../git.js';
 import type { Host } from '../host/host.js';
 import type { CommandDef } from '../main.js';
 import { assertFreeId, brainIdOf, cloneBrain, removeFolder } from '../mount/clone.js';
+import { packageVersion } from '../meta.js';
 import { checkPushRights } from '../mount/rights.js';
 import { CliError, ErrorCode, ExitCode, type Warning } from '../output.js';
 import { renderWorkspace } from '../render/workspace.js';
 import type { Mount } from '../schemas/mesh.js';
 import { findWorkspaceRoot } from '../workspace/find.js';
-import { editMesh, readMounts } from '../workspace/mesh-edit.js';
+import { editMesh, readMesh, readMounts } from '../workspace/mesh-edit.js';
 import { WORKSPACE_CONFIG, assertGitIdentity, commitPaths, pullPush } from '../workspace/repo.js';
 import { absoluteUrl } from '../workspace/url.js';
 
@@ -31,6 +32,22 @@ const firstLine = (s: string) => s.trim().split('\n')[0]!.trim();
 export async function workspaceRoot(cwd: string): Promise<string> {
   const root = await findWorkspaceRoot(cwd);
   if (root === null) throw new CliError(ErrorCode.NoWorkspace, `no mesh.yaml found in ${cwd} or any parent folder`, ExitCode.Failure);
+  return root;
+}
+
+/**
+ * The workspace root, for a command that renders and commits: refuses when mesh.yaml pins another
+ * version, so an old CLI never pushes its old core under a newer pin (chunk 11 final review).
+ */
+export async function renderingWorkspaceRoot(cwd: string): Promise<string> {
+  const root = await workspaceRoot(cwd);
+  const pin = (await readMesh(root)).brain_mesh;
+  if (pin !== packageVersion()) {
+    throw new CliError(
+      ErrorCode.PinMismatch,
+      `this workspace is pinned to brain-mesh ${pin}, but this is ${packageVersion()}; run npx -y brain-mesh-ai-workspace@${pin} init, then use that version`,
+    );
+  }
   return root;
 }
 
@@ -73,7 +90,7 @@ export function mountCommand(deps: { host: Host }): CommandDef {
       const url = absoluteUrl(args[0]!, ctx.cwd);
       const mode = String(opts.mode);
       if (mode !== 'read' && mode !== 'contribute') throw new CliError(ErrorCode.Usage, `--mode must be read or contribute, not ${mode}`, ExitCode.Usage);
-      const root = await workspaceRoot(ctx.cwd);
+      const root = await renderingWorkspaceRoot(ctx.cwd);
       const warnings: Warning[] = [];
 
       const id = brainIdOf(url);
@@ -148,7 +165,7 @@ export const unmountCommandFor = (remove: (dir: string) => Promise<void>): Comma
   },
   run: async (ctx, args, opts) => {
     const id = args[0]!;
-    const root = await workspaceRoot(ctx.cwd);
+    const root = await renderingWorkspaceRoot(ctx.cwd);
     const mount = (await readMounts(root)).find((m) => m.id === id);
     if (mount === undefined) throw new CliError(ErrorCode.UnknownBrain, `unknown brain: ${id} is not a mount in mesh.yaml`, ExitCode.Usage);
     const dir = join(root, 'brains', id);
