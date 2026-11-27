@@ -11,6 +11,8 @@ export default defineConfig({
           include: ['test/unit/**/*.test.ts', 'test/helpers/**/*.test.ts'],
           // Windows CI runners need 5–6 s for tests that copy a fixture workspace and git-init it.
           testTimeout: 30_000,
+          // No test spawns a real npx warm-up (chunk 12 plan, decision 1).
+          env: { BRAIN_MESH_NO_NPX_WARM: '1' },
         },
       },
       {
@@ -20,6 +22,7 @@ export default defineConfig({
           globalSetup: 'test/e2e/setup.ts',
           testTimeout: 180_000,
           hookTimeout: 180_000,
+          env: { BRAIN_MESH_NO_NPX_WARM: '1' },
         },
       },
     ],

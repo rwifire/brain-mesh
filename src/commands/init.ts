@@ -13,6 +13,7 @@ import { createWorkspace } from '../workspace/create.js';
 import { readMesh } from '../workspace/mesh-edit.js';
 import { loadWorkspace } from '../workspace/load.js';
 import { assertEmptyRemote, assertGitIdentity } from '../workspace/repo.js';
+import { warmCache, warmNpx, type Warm } from '../workspace/warm.js';
 
 export interface InitData {
   /** `restore` when the folder already held a cloned workspace (chunk 9 plan, decision 6). */
@@ -58,7 +59,7 @@ const doctorCounts = async (root: string) => {
  * `init` in a cloned workspace (chunk 9 plan, decision 6): checks mesh.yaml, the pin and the
  * clone before writing anything, then renders, sets the hooks path and syncs the mounts.
  */
-async function restore(root: string): Promise<{ data: InitData; text: string; warnings: Warning[]; exitCode: number }> {
+async function restore(root: string, warm: Warm): Promise<{ data: InitData; text: string; warnings: Warning[]; exitCode: number }> {
   const mesh = await readMesh(root);
   const pin = packageVersion();
   if (mesh.brain_mesh !== pin) {
@@ -76,6 +77,7 @@ async function restore(root: string): Promise<{ data: InitData; text: string; wa
   await gitOk(root, ['config', 'core.hooksPath', '.mesh/hooks']);
   const { warnings: syncWarnings, ...sync } = await syncWorkspace(root);
   warnings.push(...syncWarnings);
+  warnings.push(...(await warmCache(warm, pin, root)));
   const origin = await git(root, ['remote', 'get-url', 'origin']);
   const doctor = await doctorCounts(root);
   const data: InitData = {
@@ -99,7 +101,8 @@ async function restore(root: string): Promise<{ data: InitData; text: string; wa
 }
 
 /** `init`: a new workspace, its private repo and the first push (spec 4, plan Rulings 1–8, 16). */
-export function initCommand(deps: { host: Host }): CommandDef {
+export function initCommand(deps: { host: Host; warm?: Warm }): CommandDef {
+  const warm = deps.warm ?? warmNpx;
   return {
     name: 'init',
     description: 'create a workspace with a personal brain and a private repo',
@@ -113,7 +116,7 @@ export function initCommand(deps: { host: Host }): CommandDef {
       const name = typeof opts.name === 'string' ? opts.name : 'ai-workspace';
 
       // Everything that can fail is checked before anything is written or created (Ruling 6).
-      if (await assertEmpty(root)) return restore(root);
+      if (await assertEmpty(root)) return restore(root, warm);
       await assertGitIdentity(root);
       const user = await deps.host.login();
       let remote: string;
@@ -150,6 +153,7 @@ export function initCommand(deps: { host: Host }): CommandDef {
         );
       }
 
+      warnings.push(...(await warmCache(warm, pin, root)));
       const doctor = await doctorCounts(root);
       const files = (await gitOk(root, ['ls-files'])).split('\n').filter((f) => f !== '').sort(byString);
       const data: InitData = {
