@@ -86,55 +86,68 @@ export async function contributePr(o: {
 
   // From here on the clone changes; `restore` puts it back exactly as it was.
   await gitOk(dir, ['stash', 'push', '-q', '-u', '-m', STASH_MESSAGE]);
-  const restore = async () => {
+  /** Puts the clone back; returns git's reason when the stash could not be popped, else null. */
+  const restore = async (): Promise<string | null> => {
     await git(dir, ['cherry-pick', '--abort']);
     await git(dir, ['reset', '-q', '--hard']);
     await git(dir, ['clean', '-q', '-fd']);
     await git(dir, ['switch', '-q', '-f', base]);
     await git(dir, ['branch', '-q', '-D', branch]);
     const pop = await git(dir, ['stash', 'pop', '-q']);
-    if (pop.exitCode !== 0) {
-      warnings.push({ code: 'W_STASH_KEPT', message: `your changes in brains/${id}/ are kept in git stash (${STASH_MESSAGE}): ${firstLine(pop.stderr)}` });
-    }
+    return pop.exitCode === 0 ? null : firstLine(pop.stderr) || 'git stash pop failed';
   };
-  const fail = async (err: CliError): Promise<never> => {
-    await restore();
-    throw err;
+  let restored = false;
+  /** Restores the clone and throws `err`; `back` is added only when the changes really are back. */
+  const fail = async (err: CliError, back = ''): Promise<never> => {
+    restored = true;
+    const kept = await restore();
+    const where =
+      kept === null
+        ? back
+        : `. Your changes could not be put back (${kept}): they are kept in git stash (${STASH_MESSAGE}) in brains/${id}/; run git stash pop there`;
+    throw new CliError(err.code, `${err.message}${where}`, err.exitCode);
   };
+  const update = localCommits.length > 0 ? `git rebase origin/${base}` : `git merge --ff-only origin/${base}`;
   const conflict = (what: string) =>
-    new CliError(ErrorCode.SyncConflict, `${what} conflicts with newer commits on origin/${base}; nothing was pushed and brains/${id}/ is as it was. Merge origin/${base} by hand, then commit again`);
+    new CliError(
+      ErrorCode.SyncConflict,
+      `${what} conflicts with newer commits on origin/${base}; nothing was pushed and brains/${id}/ is as it was. ` +
+        `Bring it up to date in brains/${id}/ with git stash -u, ${update}, git stash pop; resolve the conflicts there, then commit again`,
+    );
 
-  await gitOk(dir, ['switch', '-q', '--no-track', '-c', branch, `origin/${base}`]);
-  for (const c of localCommits) {
-    if ((await git(dir, ['cherry-pick', c])).exitCode !== 0) return fail(conflict(`your local commit ${c.slice(0, 7)}`));
-  }
-  if ((await git(dir, ['stash', 'apply', '-q'])).exitCode !== 0) return fail(conflict('your change'));
   try {
+    await gitOk(dir, ['switch', '-q', '--no-track', '-c', branch, `origin/${base}`]);
+    for (const c of localCommits) {
+      if ((await git(dir, ['cherry-pick', c])).exitCode !== 0) return await fail(conflict(`your local commit ${c.slice(0, 7)}`));
+    }
+    if ((await git(dir, ['stash', 'apply', '-q'])).exitCode !== 0) return await fail(conflict('your change'));
     warnings.push(...(await fixGenerated(await loadWorkspace(root), id)).warnings);
     await assertGate(root, id);
+    await gitOk(dir, ['add', '-A']);
+    if ((await git(dir, ['diff', '--cached', '--quiet'])).exitCode === 0 && localCommits.length === 0) {
+      return await fail(new CliError(ErrorCode.Git, `the changes in brains/${id}/ are already on origin/${base}; nothing to contribute`));
+    }
+    const commit = await git(dir, ['commit', '-q', '--allow-empty', '-m', o.message]);
+    if (commit.exitCode !== 0) return await fail(new CliError(ErrorCode.Git, `git commit failed in brains/${id}/: ${firstLine(commit.stderr)}`));
+    const push = await git(dir, ['push', '-q', '-u', 'origin', branch], { network: true });
+    if (push.exitCode !== 0) {
+      return await fail(new CliError(ErrorCode.Git, `the push of ${branch} to ${o.url} failed: ${firstLine(push.stderr)}`), `. Your changes are back, uncommitted, in brains/${id}/`);
+    }
   } catch (err) {
-    if (err instanceof CliError) return fail(err);
-    await restore();
-    throw err;
-  }
-  await gitOk(dir, ['add', '-A']);
-  if ((await git(dir, ['diff', '--cached', '--quiet'])).exitCode === 0 && localCommits.length === 0) {
-    return fail(new CliError(ErrorCode.Git, `the changes in brains/${id}/ are already on origin/${base}; nothing to contribute`));
-  }
-  const commit = await git(dir, ['commit', '-q', '--allow-empty', '-m', o.message]);
-  if (commit.exitCode !== 0) return fail(new CliError(ErrorCode.Git, `git commit failed in brains/${id}/: ${firstLine(commit.stderr)}`));
-  const push = await git(dir, ['push', '-q', '-u', 'origin', branch], { network: true });
-  if (push.exitCode !== 0) {
-    return fail(new CliError(ErrorCode.Git, `the push of ${branch} to ${o.url} failed: ${firstLine(push.stderr)}. Your changes are back, uncommitted, in brains/${id}/`));
+    if (restored) throw err;
+    const e = err instanceof CliError ? err : new CliError(ErrorCode.Git, err instanceof Error ? firstLine(err.message) : String(err));
+    return fail(e, `. Nothing was pushed, and your changes are back in brains/${id}/`);
   }
 
   // Pushed: the branch holds every change, so the stash and the local-only commits can go.
   await git(dir, ['stash', 'drop', '-q']);
-  const sha = await gitOk(dir, ['rev-parse', 'HEAD']);
-  const changed = (await gitOk(dir, ['diff', '--name-only', '-z', `origin/${base}`, 'HEAD'])).split('\0').filter((f) => f !== '').sort();
   const text = prText(o.message, o.body);
   let pr: { number: number; url: string };
+  let sha: string;
+  let changed: string[];
   try {
+    sha = await gitOk(dir, ['rev-parse', 'HEAD']);
+    changed = (await gitOk(dir, ['diff', '--name-only', '-z', `origin/${base}`, 'HEAD'])).split('\0').filter((f) => f !== '').sort();
     pr = await host.createPullRequest({ repo, head: branch, base, title: text.title, body: text.body });
   } catch (err) {
     await git(dir, ['switch', '-q', base]);
@@ -142,7 +155,7 @@ export async function contributePr(o: {
     const code = err instanceof CliError ? err.code : ErrorCode.PrCreate;
     throw new CliError(
       code,
-      `${why}; the branch ${branch} is pushed, so open the pull request at https://github.com/${repo.owner}/${repo.name}/compare/${base}...${branch}`,
+      `${why}; your changes are on the branch ${branch}, which is pushed, so open the pull request at https://github.com/${repo.owner}/${repo.name}/compare/${base}...${branch}`,
     );
   }
   await gitOk(dir, ['switch', '-q', base]);

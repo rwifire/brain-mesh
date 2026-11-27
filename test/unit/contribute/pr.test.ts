@@ -40,6 +40,14 @@ const commit = (root: string, commands: ReturnType<typeof commandsFor>, ...args:
 const status = (dir: string) => git(dir, 'status', '--porcelain', '--untracked-files=all');
 const remoteBranches = async (bare: string) => (await git(bare, 'branch', '--format=%(refname:short)')).trim().split('\n').filter((b) => b !== '');
 const localMesh = async (dir: string) => (await git(dir, 'branch', '--list', 'mesh/*')).trim();
+/** Everything a failed contribute must leave as it was. */
+const snapshot = async (dir: string) => ({
+  branch: (await git(dir, 'branch', '--show-current')).trim(),
+  head: (await git(dir, 'rev-parse', 'HEAD')).trim(),
+  status: await status(dir),
+  stash: (await git(dir, 'stash', 'list')).trim(),
+  mesh: await localMesh(dir),
+});
 
 describe('the pull-request route', () => {
   it('opens a PR', async () => {
@@ -177,5 +185,64 @@ describe('the pull-request route', () => {
     expect(r.json().data.files).toContain('notes/runner-pools.md');
     expect(host.calls.length).toBe(callsBefore);
     expect(await status(dir)).toBe(before);
+  });
+});
+
+describe('contribute restores the clone on every failure', () => {
+  it('a branch that cannot be created', async () => {
+    const { root, dir, commands } = await setup();
+    await git(dir, 'branch', 'mesh/octo-user', 'main');
+    await addNote(root, dir);
+    const before = await snapshot(dir);
+    const r = await commit(root, commands, '-m', 'Add runner pools');
+    expect(r.code, r.out).not.toBe(0);
+    expect(await snapshot(dir)).toEqual(before);
+  });
+
+  it('a stash that cannot be popped is named', async () => {
+    const { root, bare, dir, commands } = await setup();
+    const lock = join(dir, '.git', 'index.lock').replace(/\\/g, '/');
+    const hook = join(bare, 'hooks', 'pre-receive');
+    await writeFile(hook, `#!/bin/sh\ntouch "${lock}"\nexit 1\n`, 'utf8');
+    await chmod(hook, 0o755);
+    await addNote(root, dir);
+    const r = await commit(root, commands, '-m', 'Add runner pools');
+    expect(r.json().error.message, r.out).toContain('git stash');
+    expect(r.json().error.message).not.toContain('Your changes are back');
+    await rm(lock);
+    expect(await git(dir, 'stash', 'list')).toContain('brain-mesh contribute');
+  });
+
+  it('an uncommitted change that conflicts with origin', async () => {
+    const { root, bare, dir, commands } = await setup();
+    await pushToRemote(bare, 'notes/runner-pools.md', note('Upstream pools'));
+    await addNote(root, dir);
+    const before = await snapshot(dir);
+    const r = await commit(root, commands, '-m', 'Add runner pools');
+    expect(r.json().error, r.out).toMatchObject({ code: 'E_SYNC_CONFLICT', message: expect.stringContaining('git merge --ff-only origin/main') });
+    expect(await snapshot(dir)).toEqual(before);
+  });
+
+  it('a local commit that conflicts with origin', async () => {
+    const { root, bare, dir, commands } = await setup();
+    await pushToRemote(bare, 'notes/runner-pools.md', note('Upstream pools'));
+    await addNote(root, dir);
+    await git(dir, 'add', '-A');
+    await git(dir, 'commit', '-q', '-m', 'local commit');
+    await addNote(root, dir, 'notes/other.md', 'Other');
+    const before = await snapshot(dir);
+    const r = await commit(root, commands, '-m', 'Add runner pools');
+    expect(r.json().error.code, r.out).toBe('E_SYNC_CONFLICT');
+    expect(await snapshot(dir)).toEqual(before);
+  });
+
+  it('a gate failure on the fresh base', async () => {
+    const { root, bare, dir, commands } = await setup();
+    await pushToRemote(bare, 'notes/broken.md', '---\ntype: note\nupdated: 2026-11-27\n---\n# Broken\n');
+    await addNote(root, dir);
+    const before = await snapshot(dir);
+    const r = await commit(root, commands, '-m', 'Add runner pools');
+    expect(r.json().error.code, r.out).toBe('E_DOCTOR_ERRORS');
+    expect(await snapshot(dir)).toEqual(before);
   });
 });

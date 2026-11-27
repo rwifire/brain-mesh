@@ -101,6 +101,8 @@ describe('core skills', () => {
       'people-policy-reviewer',
       'override',
       'read',
+      'E_SYNC_CONFLICT',
+      'E_DOCTOR_ERRORS',
     ]) {
       expect(text, s).toContain(s);
     }

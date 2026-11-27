@@ -4,7 +4,7 @@ description: Bring approved changes in a shared brain to its team. Check the gen
 ---
 # Contribute
 
-Run this only after the user approved the content. Shared brains change only through this skill: never commit, branch or push in `brains/<id>/` by hand.
+Run this only after the user approved the content. Shared brains change only through this skill: never commit, branch or push in `brains/<id>/` by hand (the one exception is resolving a conflict, step 6).
 
 ## 1. Check the mode
 
@@ -59,4 +59,6 @@ Ask before you open the pull request (or make the direct commit). Change the tit
 
 - PR route: report `data.pr.url` (the PR URL) and the branch. The clone is back on the default branch, without the change: the change is in the PR until it is merged.
 - Direct route: report the commit.
-- On an error, tell the user what the message says. When it names a compare URL, the branch is pushed and the user can open the pull request there. When it says the changes are back, nothing was lost and the change can be committed again after the fix.
+- On an error, tell the user what the message says. When it names a compare URL, the branch is pushed and the user can open the pull request there. When it says the changes are back, nothing was lost and the change can be committed again after the fix. When it says they are kept in git stash, tell the user to run `git stash pop` in `brains/<id>/`.
+- `E_DOCTOR_ERRORS`: the brain has errors (sometimes from newer notes on `origin`). Run step 2 again, fix what it lists with the user, then step 6.
+- `E_SYNC_CONFLICT`: someone changed the same notes on `origin`. The clone is as it was. With the user's agreement, run the git commands the message names in `brains/<id>/` (this is the one time you run git there yourself), resolve the conflicts with the user, then go back to step 2.
